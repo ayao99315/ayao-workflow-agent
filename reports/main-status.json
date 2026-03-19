@@ -1,0 +1,35 @@
+{
+  "agent": "main",
+  "updated_at": "2026-03-18T12:26:00.000Z",
+  "date": "2026-03-18",
+  "summary": "PolyGo 系统全面就绪：基础设施上线、回测系统建成、策略参数定案，等待 Polymarket 实盘 API Key",
+  "tasks_done": [
+    "修复 2 个未提交文件（verify-phase2 类型合约化 + game-runner 执行路径重构）",
+    "修复 4 个流程 Bug：force-commit exit code、webhook 竞态锁（flock）、幂等键去重、last_seen 误报",
+    "安装 Nginx（port 3100）+ Cloudflare Tunnel，polygo.doai.run 外网可访问",
+    "部署 polygo-web-admin 到 Nginx，配置 Supabase 数据库连接",
+    "启动 polygo-daemon，今日 8 场 NBA 比赛数据已写入 DB 并在 web-admin 正常展示",
+    "daemon + web-admin + cloudflared 全部配置开机自启（launchd）",
+    "新增 codex-test / codex-deploy / codex-frontend Agent，前端按 ui_quality 选模型",
+    "新增 milestone-check.sh 里程碑测试机制",
+    "新增 prompt-codex-test.md / prompt-codex-deploy.md 模板",
+    "建立 polygo-backtest 回测子模块（从零实现）",
+    "批量拉取 2356 场 Polymarket NBA 历史数据（含 CLOB 分钟级价格缓存）",
+    "运行 10+ 组参数对比回测，定案最优策略",
+    "更新核心策略文档（docs/strategy 系列），干掉 Zone B/C/D 开仓",
+    "Playbook 更新到 v2.4，SKILL.md 加入模型分层规则 + 编排层禁止碰代码铁律"
+  ],
+  "tasks_pending": [
+    "等待 Polymarket API Key（POLYMARKET_PRIVATE_KEY / CLOB API Key）",
+    "Key 到位后：配置 .env，启动实盘模式，小仓位验证（建议 $20/笔起）"
+  ],
+  "current_project": "PolyGo",
+  "tokens": {
+    "codex_input": 250000,
+    "codex_output": 0,
+    "cc_input": 80000,
+    "cc_output": 0
+  },
+  "blockers": "等待 Polymarket 实盘 API Key，无 Key 无法开启实盘交易",
+  "notes": "策略定案：Zone A only，L1=0.25 / L2=0.15 / Fav=0.30，SL=0.60，TP=0.30。回测表现：2356场，84笔/年，胜率 68%，Sharpe 3.35。外网地址：https://polygo.doai.run"
+}

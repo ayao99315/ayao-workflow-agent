@@ -1,6 +1,6 @@
 ---
-name: agent-swarm
-description: "Orchestrate multi-agent coding workflows using tmux-driven Claude Code and Codex agents. Use when: (1) user requests a feature/fix that should be delegated to coding agents, (2) managing parallel coding tasks across front-end and back-end, (3) monitoring active agent sessions and coordinating review, (4) user says 'start task', 'assign to agents', 'swarm mode', or references the agent-swarm playbook. NOT for: simple one-liner edits (just edit directly), reading code (use read tool), or single quick questions about code."
+name: coding-swarm-agent
+description: "Orchestrate multi-agent coding workflows using tmux-driven Claude Code and Codex agents. Use when: (1) user requests a feature/fix that should be delegated to coding agents, (2) managing parallel coding tasks across front-end and back-end, (3) monitoring active agent sessions and coordinating review, (4) user says 'start task', 'assign to agents', 'swarm mode', or references the coding-swarm-agent playbook. NOT for: simple one-liner edits (just edit directly), reading code (use read tool), or single quick questions about code."
 ---
 
 # Agent Swarm Orchestrator
@@ -94,7 +94,7 @@ Write tasks to `~/.openclaw/workspace/swarm/active-tasks.json`. See `references/
 
 Install git hooks for event-driven automation:
 ```bash
-~/.openclaw/workspace/skills/agent-swarm/scripts/install-hooks.sh /path/to/project
+~/.openclaw/workspace/skills/coding-swarm-agent/scripts/install-hooks.sh /path/to/project
 ```
 
 This installs a `post-commit` hook that:
@@ -310,7 +310,7 @@ Model is fixed as `gpt-5.4`. Reasoning effort is configurable via `-c model_reas
 
 ### Send commands to agents (with auto-completion notification)
 ```bash
-SKILL_DIR=~/.openclaw/workspace/skills/agent-swarm
+SKILL_DIR=~/.openclaw/workspace/skills/coding-swarm-agent
 
 # cc-plan — always opus
 # Use --output-format json so parse-tokens.sh can extract usage stats from the log.
@@ -383,4 +383,4 @@ tmux send-keys -t <session> Enter
 - `scripts/health-check.sh` — Inspect all running agent sessions; detect stuck/dead agents and notify
 - `scripts/cleanup-agents.sh` — Kill all dynamic agent sessions after swarm completes; preserve fixed sessions
 - `scripts/monitor.sh` — Fallback cron monitor (safety net, optional)
-- Full design doc: `~/.openclaw/workspace/docs/agent-swarm-playbook.md`
+- Full design doc: `~/.openclaw/workspace/docs/coding-swarm-agent-playbook.md`

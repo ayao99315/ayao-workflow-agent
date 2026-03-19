@@ -1,0 +1,51 @@
+{
+  "updated_at": "2026-03-18T11:47:53Z",
+  "limits": {
+    "max_codex": 4,
+    "max_cc_frontend": 2,
+    "min_free_memory_mb": 2048,
+    "stuck_timeout_minutes": 15
+  },
+  "naming": {
+    "codex_pattern": "codex-{1..4}",
+    "cc_frontend_pattern": "cc-frontend-{1..2}",
+    "fixed_sessions": [
+      "cc-plan",
+      "cc-review",
+      "codex-review"
+    ],
+    "note": "Fixed sessions are NEVER auto-spawned or auto-killed. Dynamic sessions follow the patterns above."
+  },
+  "agents": [
+    {
+      "id": "cc-plan",
+      "type": "claude",
+      "domain": "plan",
+      "tmux": "cc-plan",
+      "status": "idle",
+      "current_task": null,
+      "spawned_at": null,
+      "last_seen": "2026-03-18T11:47:53.983954+00:00"
+    },
+    {
+      "id": "cc-review",
+      "type": "claude",
+      "domain": "review",
+      "tmux": "cc-review",
+      "status": "idle",
+      "current_task": null,
+      "spawned_at": null,
+      "last_seen": "2026-03-18T08:21:08.624249+00:00"
+    },
+    {
+      "id": "codex-review",
+      "type": "codex",
+      "domain": "review",
+      "tmux": "codex-review",
+      "status": "idle",
+      "current_task": null,
+      "spawned_at": null,
+      "last_seen": null
+    }
+  ]
+}

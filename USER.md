@@ -6,7 +6,7 @@ _Learn about the person you're helping. Update this as you go._
 - **What to call them:** 爸爸
 - **Pronouns:** _(optional)_
 - **Timezone:** Asia/Shanghai
-- **Notes:** 喜欢中文交流，希望助手风格调皮一点；将助手名字从小莫改为小默。
+- **Notes:** 喜欢中文交流，希望助手风格调皮一点；将助手名字从小莫改为小默，后又改为小明。
 
 ## Context
 
