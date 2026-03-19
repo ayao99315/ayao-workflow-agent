@@ -197,7 +197,8 @@ PROMPT
 
 # Step 3: dispatch（用 --prompt-file，不用手动转义）
 $SKILL_DIR/scripts/dispatch.sh cc-frontend FIX-XXX --prompt-file /tmp/fix-xxx-prompt.txt \
-  "claude --model claude-sonnet-4-6 --permission-mode bypassPermissions --no-session-persistence --print --output-format json"
+  claude --model claude-sonnet-4-6 --permission-mode bypassPermissions \
+  --no-session-persistence --print --output-format json
 
 # DEPLOY-XXX 在 FIX-XXX on-complete 后自动解锁并 dispatch
 ```
@@ -218,8 +219,9 @@ For each ready task (status=pending, dependencies met):
   - In "Do NOT" section, list files likely to be accidentally modified
 - Dispatch using the wrapper script (auto: marks running + attaches completion callback + force-commits if agent forgets):
   ```bash
-  scripts/dispatch.sh <session> <task_id> "<agent_command>"
+  scripts/dispatch.sh <session> <task_id> --prompt-file /tmp/task-prompt.txt <agent> <arg1> <arg2> ...
   ```
+  Legacy single-string commands are still accepted for backward compatibility, but new docs should always use argv + `--prompt-file`.
   dispatch.sh automatically:
   1. Updates active-tasks.json status to `running`
   2. Appends a force-commit check after agent finishes (catches forgotten commits)
@@ -414,24 +416,38 @@ Model is fixed as `gpt-5.4`. Reasoning effort is configurable via `-c model_reas
 ### Send commands to agents (with auto-completion notification)
 ```bash
 SKILL_DIR=~/.openclaw/workspace/skills/coding-swarm-agent
+PROMPT_FILE=/tmp/swarm-task-prompt.txt
+
+cat > "$PROMPT_FILE" << 'PROMPT'
+PROMPT_HERE
+PROMPT
 
 # cc-plan — always opus
 # Use --output-format json so parse-tokens.sh can extract usage stats from the log.
 # dispatch.sh wraps the command with `tee LOG_FILE`, so LOG_FILE contains the JSON blob.
-$SKILL_DIR/scripts/dispatch.sh cc-plan T000 "claude --model claude-opus-4-6 --permission-mode bypassPermissions --no-session-persistence --print --output-format json 'PROMPT_HERE'"
+$SKILL_DIR/scripts/dispatch.sh cc-plan T000 --prompt-file "$PROMPT_FILE" \
+  claude --model claude-opus-4-6 --permission-mode bypassPermissions \
+  --no-session-persistence --print --output-format json
 
 # cc-review / cc-frontend — sonnet
-$SKILL_DIR/scripts/dispatch.sh cc-review T005 "claude --model claude-sonnet-4-6 --permission-mode bypassPermissions --no-session-persistence --print --output-format json 'PROMPT_HERE'"
-$SKILL_DIR/scripts/dispatch.sh cc-frontend T010 "claude --model claude-sonnet-4-6 --permission-mode bypassPermissions --no-session-persistence --print --output-format json 'PROMPT_HERE'"
+$SKILL_DIR/scripts/dispatch.sh cc-review T005 --prompt-file "$PROMPT_FILE" \
+  claude --model claude-sonnet-4-6 --permission-mode bypassPermissions \
+  --no-session-persistence --print --output-format json
+$SKILL_DIR/scripts/dispatch.sh cc-frontend T010 --prompt-file "$PROMPT_FILE" \
+  claude --model claude-sonnet-4-6 --permission-mode bypassPermissions \
+  --no-session-persistence --print --output-format json
 
 # Codex — standard task (high effort, default)
-$SKILL_DIR/scripts/dispatch.sh codex-1 T001 "codex exec -c model_reasoning_effort=high --dangerously-bypass-approvals-and-sandbox 'PROMPT_HERE'"
+$SKILL_DIR/scripts/dispatch.sh codex-1 T001 --prompt-file "$PROMPT_FILE" \
+  codex exec -c model_reasoning_effort=high --dangerously-bypass-approvals-and-sandbox
 
 # Codex — retry / complex task (extra-high effort)
-$SKILL_DIR/scripts/dispatch.sh codex-1 T001 "codex exec -c model_reasoning_effort=extra-high --dangerously-bypass-approvals-and-sandbox 'PROMPT_HERE'"
+$SKILL_DIR/scripts/dispatch.sh codex-1 T001 --prompt-file "$PROMPT_FILE" \
+  codex exec -c model_reasoning_effort=extra-high --dangerously-bypass-approvals-and-sandbox
 
 # Codex — simple/boilerplate task (medium effort, faster)
-$SKILL_DIR/scripts/dispatch.sh codex-1 T001 "codex exec -c model_reasoning_effort=medium --dangerously-bypass-approvals-and-sandbox 'PROMPT_HERE'"
+$SKILL_DIR/scripts/dispatch.sh codex-1 T001 --prompt-file "$PROMPT_FILE" \
+  codex exec -c model_reasoning_effort=medium --dangerously-bypass-approvals-and-sandbox
 ```
 
 ### Read agent output

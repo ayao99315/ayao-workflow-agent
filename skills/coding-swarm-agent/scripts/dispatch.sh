@@ -1,6 +1,8 @@
 #!/bin/bash
 # dispatch.sh — Send a command to a tmux agent session with auto-completion notification
-# Usage: dispatch.sh <session> <task_id> <command...>
+# Usage:
+#   dispatch.sh <session> <task_id> <command...>
+#   dispatch.sh <session> <task_id> "<legacy shell command string>"
 #
 # Wraps the agent command so that:
 # 1. Task status is updated to "running" before execution
@@ -20,9 +22,10 @@ TASK_ID="${2:?}"
 shift 2
 
 # Support --prompt-file <file> as first argument after task_id.
-# The prompt is copied to a temp file and consumed by the agent runner script so
-# markdown/code blocks/newlines are preserved without shell-escaping issues.
-# Usage: dispatch.sh <session> <task_id> --prompt-file /tmp/prompt.txt codex exec ...
+# The prompt is copied to a temp file and streamed to the agent command via stdin
+# so markdown/code blocks/newlines are preserved without shell-escaping issues.
+# Recommended usage:
+#   dispatch.sh <session> <task_id> --prompt-file /tmp/prompt.txt codex exec ...
 PROMPT_FILE=""
 PROMPT_TMP_FILE=""
 DISPATCHED=false
@@ -37,12 +40,46 @@ if [[ "${1:-}" == "--prompt-file" ]]; then
   shift 2
 fi
 
-COMMAND_ARGS=("$@")
+make_temp_file() {
+  local prefix="$1"
+  local tmp_base="${TMPDIR:-/tmp}"
+  mktemp "${tmp_base%/}/${prefix}.XXXXXX"
+}
+
+COMMAND_ARGS=()
+if [[ "$#" == "1" ]]; then
+  while IFS= read -r -d '' _arg; do
+    COMMAND_ARGS+=("$_arg")
+  done < <(
+    python3 - "$1" <<'PY'
+import shlex
+import sys
+
+try:
+    parts = shlex.split(sys.argv[1], posix=True)
+except ValueError as exc:
+    print(f"dispatch.sh: failed to parse legacy command string: {exc}", file=sys.stderr)
+    sys.exit(1)
+
+for part in parts:
+    sys.stdout.buffer.write(part.encode("utf-8"))
+    sys.stdout.buffer.write(b"\0")
+PY
+  )
+else
+  COMMAND_ARGS=("$@")
+fi
+
+if [[ "${#COMMAND_ARGS[@]}" == "0" ]]; then
+  echo "Usage: dispatch.sh <session> <task_id> [--prompt-file <file>] <command...>" >&2
+  exit 1
+fi
+
 COMMAND_LITERAL="$(printf ' %q' "${COMMAND_ARGS[@]}")"
 COMMAND_LITERAL="${COMMAND_LITERAL# }"
 
 if [[ -n "$PROMPT_FILE" ]]; then
-  PROMPT_TMP_FILE="$(mktemp "/tmp/agent-swarm-prompt-${TASK_ID}-${SESSION}.XXXXXX.txt")"
+  PROMPT_TMP_FILE="$(make_temp_file "agent-swarm-prompt-${TASK_ID}-${SESSION}")"
   cat "$PROMPT_FILE" > "$PROMPT_TMP_FILE"
 fi
 
@@ -56,7 +93,7 @@ LOG_FILE="/tmp/agent-swarm-${TASK_ID}-${SESSION}.log"
 # JSON sidecar — raw JSON from `claude --output-format json`, used for token parsing
 CC_JSON_FILE="/tmp/agent-swarm-${TASK_ID}-${SESSION}-cc.json"
 # Temp bash script executed in the tmux pane
-SCRIPT_FILE="/tmp/agent-swarm-run-${TASK_ID}-${SESSION}.sh"
+SCRIPT_FILE="$(make_temp_file "agent-swarm-run-${TASK_ID}-${SESSION}")"
 
 # ── Mark task as running ─────────────────────────────────────────────────────
 # Use if-then-else to capture exit code without triggering set -e on non-zero return.
@@ -92,11 +129,7 @@ fi
 
 PROMPT_MODE="none"
 if [[ -n "$PROMPT_TMP_FILE" ]]; then
-  if [[ "$_CMD_BIN" == "claude" ]]; then
-    PROMPT_MODE="stdin"
-  else
-    PROMPT_MODE="append"
-  fi
+  PROMPT_MODE="stdin"
 fi
 
 # ── Build agent runner script ────────────────────────────────────────────────
@@ -134,13 +167,6 @@ run_agent() {
   case "\${PROMPT_MODE}" in
     stdin)
       cat "\${PROMPT_TMP_FILE}" | "\${COMMAND[@]}"
-      ;;
-    append)
-      # Preserve trailing newlines when passing prompt text as a single argv item.
-      _PROMPT_SENTINEL=$'\001'
-      PROMPT_CONTENT="\$(cat "\${PROMPT_TMP_FILE}"; printf '%s' "\${_PROMPT_SENTINEL}")"
-      PROMPT_CONTENT="\${PROMPT_CONTENT%\${_PROMPT_SENTINEL}}"
-      "\${COMMAND[@]}" "\${PROMPT_CONTENT}"
       ;;
     *)
       "\${COMMAND[@]}"
@@ -204,13 +230,6 @@ run_agent() {
   case "\${PROMPT_MODE}" in
     stdin)
       cat "\${PROMPT_TMP_FILE}" | "\${COMMAND[@]}"
-      ;;
-    append)
-      # Preserve trailing newlines when passing prompt text as a single argv item.
-      _PROMPT_SENTINEL=$'\001'
-      PROMPT_CONTENT="\$(cat "\${PROMPT_TMP_FILE}"; printf '%s' "\${_PROMPT_SENTINEL}")"
-      PROMPT_CONTENT="\${PROMPT_CONTENT%\${_PROMPT_SENTINEL}}"
-      "\${COMMAND[@]}" "\${PROMPT_CONTENT}"
       ;;
     *)
       "\${COMMAND[@]}"

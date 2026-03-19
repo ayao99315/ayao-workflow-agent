@@ -13,10 +13,19 @@ All frontend code is written by Claude Code, never Codex.
 ## 调用命令格式
 
 ```bash
-claude --permission-mode bypassPermissions --no-session-persistence --print 'PROMPT'
+PROMPT_FILE=/tmp/cc-frontend-prompt.txt
+
+cat > "$PROMPT_FILE" << 'PROMPT'
+[完整任务 prompt]
+PROMPT
+
+scripts/dispatch.sh cc-frontend T010 --prompt-file "$PROMPT_FILE" \
+  claude --permission-mode bypassPermissions --no-session-persistence \
+  --print --output-format json
 ```
 
 > `--no-session-persistence`：每次任务独立上下文，不写磁盘，节省 token 和空间。
+> 推荐统一用 `dispatch.sh --prompt-file`，避免 shell quoting 地狱。
 
 ## 模板
 

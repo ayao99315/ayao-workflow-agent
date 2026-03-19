@@ -5,8 +5,18 @@ Use this template for both cc-review (reviewing Codex output) and codex-review (
 ## 调用命令格式
 
 ```bash
-claude --permission-mode bypassPermissions --no-session-persistence --print 'PROMPT'
+PROMPT_FILE=/tmp/cc-review-prompt.txt
+
+cat > "$PROMPT_FILE" << 'PROMPT'
+[完整 review prompt]
+PROMPT
+
+scripts/dispatch.sh cc-review T005 --prompt-file "$PROMPT_FILE" \
+  claude --permission-mode bypassPermissions --no-session-persistence \
+  --print --output-format json
 ```
+
+> 推荐统一用 `dispatch.sh --prompt-file`，不要把整段 prompt 直接塞进 shell 引号里。
 
 ---
 

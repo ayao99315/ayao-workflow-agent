@@ -5,9 +5,17 @@ Use this template when dispatching tasks to Codex (codex-1, codex-2, etc.).
 ## 调用命令格式
 
 ```bash
-codex exec --dangerously-bypass-approvals-and-sandbox 'PROMPT'
+PROMPT_FILE=/tmp/codex-task-prompt.txt
+
+cat > "$PROMPT_FILE" << 'PROMPT'
+[完整任务 prompt]
+PROMPT
+
+scripts/dispatch.sh codex-1 T001 --prompt-file "$PROMPT_FILE" \
+  codex exec --dangerously-bypass-approvals-and-sandbox
 ```
 
+> 推荐把 prompt 单独写文件，再通过 `dispatch.sh --prompt-file` 走 stdin。这样长 markdown、多行文本、引号都更稳。
 > YOLO 模式：无沙盒、无确认提示，agent 可直接执行任意 shell 命令。仅在受信任环境中使用。
 
 ## 重要原则

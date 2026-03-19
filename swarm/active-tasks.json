@@ -1,7 +1,7 @@
 {
   "project": "PolyGo-Backtest",
   "repo": "github.com/ayao99315/PolyGo",
-  "updated_at": "2026-03-19T09:21:58.216Z",
+  "updated_at": "2026-03-19T17:27:12.423372+00:00",
   "ui_quality": "internal",
   "milestones": [
     {
@@ -605,6 +605,94 @@
       "created_at": "2026-03-19T08:26:50.500875Z",
       "updated_at": "2026-03-19T09:21:58.216Z",
       "note": "Review 通过。SWARM-T002+T003+T004 链路简化及 --prompt-file 修复确认正确。"
+    },
+    {
+      "id": "SWARM-T005",
+      "name": "修复 dispatch.sh 调用兼容性与 prompt-file 链路（含 macOS mktemp、Codex stdin）",
+      "domain": "backend",
+      "agent": "codex-1",
+      "tmux": "codex-1",
+      "status": "running",
+      "review_level": "full",
+      "milestone": null,
+      "note": "处理 SWARM-REVIEW2 提出的 dispatch.sh 三个遗留问题，并同步修正文档示例。",
+      "commits": [],
+      "issue": null,
+      "depends_on": [],
+      "created_at": "2026-03-19T17:27:08Z",
+      "updated_at": "2026-03-19T17:27:12.423372+00:00",
+      "attempts": 0,
+      "max_attempts": 3,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      }
+    },
+    {
+      "id": "SWARM-T006",
+      "name": "修复 on-complete.sh 的 swarm-complete 汇总范围，仅统计当前批次任务",
+      "domain": "backend",
+      "agent": "codex-1",
+      "tmux": "codex-1",
+      "status": "blocked",
+      "review_level": "full",
+      "milestone": null,
+      "note": "处理 SWARM-REVIEW2 提出的历史任务被错误纳入汇总的问题；需要给当前批次增加可判定边界。",
+      "commits": [],
+      "issue": null,
+      "depends_on": [
+        "SWARM-T005"
+      ],
+      "created_at": "2026-03-19T17:27:08Z",
+      "updated_at": "2026-03-19T17:27:08Z",
+      "attempts": 0,
+      "max_attempts": 3,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      }
+    },
+    {
+      "id": "SWARM-REVIEW3",
+      "name": "Review SWARM-T005+T006，确认 dispatch 与 swarm-complete 两类遗留问题已彻底修复",
+      "domain": "backend",
+      "agent": "cc-review",
+      "tmux": "cc-review",
+      "status": "blocked",
+      "review_level": "full",
+      "milestone": null,
+      "note": "重点检查 dispatch.sh 调用兼容性、prompt-file 传递、macOS mktemp，以及 on-complete 仅统计当前批次任务。",
+      "commits": [],
+      "issue": null,
+      "depends_on": [
+        "SWARM-T006"
+      ],
+      "created_at": "2026-03-19T17:27:08Z",
+      "updated_at": "2026-03-19T17:27:08Z",
+      "attempts": 0,
+      "max_attempts": 3,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      }
     }
-  ]
+  ],
+  "meta": {
+    "current_swarm_batch": {
+      "id": "swarm-2026-03-20-review2-followup",
+      "task_ids": [
+        "SWARM-T005",
+        "SWARM-T006",
+        "SWARM-REVIEW3"
+      ],
+      "created_at": "2026-03-19T17:27:08Z",
+      "project": "coding-swarm-agent"
+    }
+  }
 }
