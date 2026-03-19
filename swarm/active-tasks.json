@@ -3,7 +3,7 @@
   "project": "coding-swarm-agent",
   "repo": "github.com/ayao99315/coding-swarm-agent",
   "created_at": "2026-03-19T23:17:24Z",
-  "updated_at": "2026-03-19T23:25:07.878367+00:00",
+  "updated_at": "2026-03-19T23:30:08.372529+00:00",
   "tasks": [
     {
       "id": "SWARM-ARCH-T001",
@@ -37,20 +37,22 @@
       "domain": "backend",
       "agent": "codex-1",
       "tmux": "codex-1",
-      "status": "running",
+      "status": "done",
       "review_level": "scan",
       "milestone": null,
       "note": "依赖 T001 确认新结构后再改 on-complete",
       "commits": [
         "4f8c1b5",
-        "63e11c9"
+        "63e11c9",
+        "2e654b6",
+        "1e3bc81"
       ],
       "issue": null,
       "depends_on": [
         "SWARM-ARCH-T001"
       ],
       "created_at": "2026-03-19T23:17:38Z",
-      "updated_at": "2026-03-19T23:25:07.878367+00:00",
+      "updated_at": "2026-03-19T23:26:38.611407+00:00",
       "attempts": 0,
       "max_attempts": 3,
       "tokens": {
@@ -66,25 +68,28 @@
       "domain": "backend",
       "agent": "codex-1",
       "tmux": "codex-1",
-      "status": "blocked",
+      "status": "done",
       "review_level": "skip",
       "milestone": null,
       "note": "文档更新，依赖 T001 脚本接口稳定",
-      "commits": [],
+      "commits": [
+        "90b7aff4a6c2ad672e853582461ac343895302e9",
+        "363d7ce"
+      ],
       "issue": null,
       "depends_on": [
         "SWARM-ARCH-T001",
         "SWARM-ARCH-T002"
       ],
       "created_at": "2026-03-19T23:17:38Z",
-      "updated_at": "2026-03-19T23:17:38Z",
+      "updated_at": "2026-03-19T23:28:32.625527+00:00",
       "attempts": 0,
       "max_attempts": 3,
       "tokens": {
-        "input": 0,
-        "output": 0,
-        "cache_read": 0,
-        "cache_write": 0
+        "input": 7,
+        "output": 941,
+        "cache_read": 166448,
+        "cache_write": 13327
       }
     },
     {
@@ -93,7 +98,7 @@
       "domain": "backend",
       "agent": "cc-review",
       "tmux": "cc-review",
-      "status": "blocked",
+      "status": "done",
       "review_level": "full",
       "milestone": null,
       "note": "重点检查 archive 命名、on-complete 全量判断、向后兼容",
@@ -103,7 +108,7 @@
         "SWARM-ARCH-T003"
       ],
       "created_at": "2026-03-19T23:17:38Z",
-      "updated_at": "2026-03-19T23:17:38Z",
+      "updated_at": "2026-03-19T23:30:08.372529+00:00",
       "attempts": 0,
       "max_attempts": 3,
       "tokens": {
