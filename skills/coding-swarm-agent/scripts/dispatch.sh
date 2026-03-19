@@ -18,7 +18,25 @@ set -euo pipefail
 SESSION="${1:?Usage: dispatch.sh <session> <task_id> <command...>}"
 TASK_ID="${2:?}"
 shift 2
+
+# Support --prompt-file <file> as first argument after task_id
+# Reads prompt from file and appends as last quoted arg to the remaining command.
+# Usage: dispatch.sh <session> <task_id> --prompt-file /tmp/prompt.txt codex exec ...
+PROMPT_FILE=""
+if [[ "${1:-}" == "--prompt-file" ]]; then
+  PROMPT_FILE="${2:?--prompt-file requires a path}"
+  shift 2
+fi
+
 COMMAND="$*"
+
+# If --prompt-file was given, append the file content as a quoted argument
+if [[ -n "$PROMPT_FILE" ]]; then
+  PROMPT_CONTENT="$(cat "$PROMPT_FILE")"
+  # Escape single quotes inside the prompt
+  PROMPT_ESCAPED="${PROMPT_CONTENT//\'/\'\\\'\'}"
+  COMMAND="${COMMAND} '${PROMPT_ESCAPED}'"
+fi
 
 SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SCRIPT_DIR="$SKILL_DIR/scripts"

@@ -105,17 +105,106 @@ This installs a `post-commit` hook that:
 
 ### ⚠️ 任务注册铁律（所有任务，无例外）
 
-**每次 dispatch 前，必须先把任务写入 `active-tasks.json`。** 包括：
-- 临时 hotfix（FIX-xxx）
-- 部署任务（DEPLOY-xxx）
-- 一次性脚本任务
+**dispatch 前必须注册，没有例外，没有"太小可以跳过"。**
+dispatch.sh 收到 `WARN: task not found` = 任务在黑洞里 = 状态不追踪 = deploy 不自动触发 = 你永远不知道完没完。
 
-跳过注册 = dispatch.sh 警告 "task not found" = on-complete.sh 状态更新失效 = 丢失追踪。
+#### Hotfix 快速注册（1 行命令，比跳过更省力）
 
-哪怕是一行的 fix，也要先：
 ```bash
-# 在 active-tasks.json 的 tasks 数组里加一条，再 dispatch
+# 注册一个 hotfix/deploy 任务，直接粘贴修改 ID 和描述即可
+TASK_FILE=~/.openclaw/workspace/swarm/active-tasks.json
+TASK_ID="FIX-001"   # 改这里
+TASK_DESC="修复 sports WS warmup 问题"  # 改这里
+AGENT="cc-frontend"  # 改这里: codex-1 / cc-frontend / codex-deploy
+
+python3 - << EOF
+import json, datetime
+with open('$TASK_FILE') as f:
+    data = json.load(f)
+data['tasks'].append({
+    "id": "$TASK_ID",
+    "name": "$TASK_DESC",
+    "domain": "frontend",
+    "status": "pending",
+    "agent": "$AGENT",
+    "review_level": "skip",
+    "depends_on": [],
+    "created_at": datetime.datetime.utcnow().isoformat() + "Z"
+})
+with open('$TASK_FILE', 'w') as f:
+    json.dump(data, f, indent=2, ensure_ascii=False)
+print(f"✅ Registered $TASK_ID")
+EOF
 ```
+
+#### Hotfix + Deploy 链式注册（fix 完自动触发 deploy）
+
+```bash
+# 注册 FIX + 依赖它的 DEPLOY，形成自动链
+python3 - << EOF
+import json, datetime
+with open('$TASK_FILE') as f:
+    data = json.load(f)
+now = datetime.datetime.utcnow().isoformat() + "Z"
+data['tasks'].extend([
+    {"id": "FIX-001", "name": "修复描述", "domain": "frontend",
+     "status": "pending", "agent": "cc-frontend", "review_level": "skip",
+     "depends_on": [], "created_at": now},
+    {"id": "DEPLOY-001", "name": "部署 web-admin", "domain": "deploy",
+     "status": "blocked", "agent": "codex-deploy", "review_level": "skip",
+     "depends_on": ["FIX-001"], "created_at": now},
+])
+with open('$TASK_FILE', 'w') as f:
+    json.dump(data, f, indent=2, ensure_ascii=False)
+print("✅ Registered FIX-001 + DEPLOY-001 (chained)")
+EOF
+```
+
+注册完 → dispatch FIX → FIX 完成后 on-complete.sh 自动解锁 DEPLOY → 自动 dispatch。
+
+## Hotfix Flow（快速修复链路）
+
+当发现 bug 需要立刻修 → 立刻部署时，走这个流程：
+
+```bash
+SKILL_DIR=~/.openclaw/workspace/skills/coding-swarm-agent
+TASK_FILE=~/.openclaw/workspace/swarm/active-tasks.json
+
+# Step 1: 注册 FIX + DEPLOY 任务（链式依赖）
+python3 - << EOF
+import json, datetime
+with open('$TASK_FILE') as f:
+    data = json.load(f)
+now = datetime.datetime.utcnow().isoformat() + "Z"
+data['tasks'].extend([
+    {"id": "FIX-XXX", "name": "一句话描述", "domain": "frontend",
+     "status": "pending", "agent": "cc-frontend", "review_level": "skip",
+     "depends_on": [], "created_at": now},
+    {"id": "DEPLOY-XXX", "name": "部署", "domain": "deploy",
+     "status": "blocked", "agent": "codex-deploy", "review_level": "skip",
+     "depends_on": ["FIX-XXX"], "created_at": now},
+])
+with open('$TASK_FILE', 'w') as f:
+    json.dump(data, f, indent=2, ensure_ascii=False)
+print("✅ Registered FIX-XXX + DEPLOY-XXX")
+EOF
+
+# Step 2: 把 prompt 写到文件（避免 shell 转义地狱）
+cat > /tmp/fix-xxx-prompt.txt << 'PROMPT'
+## 你的任务
+...
+PROMPT
+
+# Step 3: dispatch（用 --prompt-file，不用手动转义）
+$SKILL_DIR/scripts/dispatch.sh cc-frontend FIX-XXX --prompt-file /tmp/fix-xxx-prompt.txt \
+  "claude --model claude-sonnet-4-6 --permission-mode bypassPermissions --no-session-persistence --print --output-format json"
+
+# DEPLOY-XXX 在 FIX-XXX on-complete 后自动解锁并 dispatch
+```
+
+**规则：hotfix 和 deploy 永远成对注册，deploy 永远依赖 fix。**
+
+---
 
 ### Phase 4: Dispatch
 
