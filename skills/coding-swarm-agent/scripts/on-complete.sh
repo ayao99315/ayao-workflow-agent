@@ -2,8 +2,8 @@
 # on-complete.sh — Called after an agent command finishes
 # Usage: on-complete.sh <task_id> <session_name> <exit_code> [log_file]
 #
-# Writes a completion signal and triggers an isolated agent turn via webhook
-# to handle review, status update, and next task dispatch automatically.
+# Writes a completion signal, updates task state synchronously, then wakes the
+# main OpenClaw session so it can handle review and next-task dispatch.
 
 set -euo pipefail
 
@@ -14,6 +14,7 @@ LOG_FILE="${4:-}"
 
 SIGNAL_FILE="/tmp/agent-swarm-signals.jsonl"
 SWARM_DIR="$HOME/.openclaw/workspace/swarm"
+TASKS_FILE="$SWARM_DIR/active-tasks.json"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TS=$(date +%s)
 COMMIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "none")
@@ -40,11 +41,19 @@ print(json.dumps({
   'time': $TS
 }))" "$COMMIT_MSG" "$TOKENS_JSON" >> "$SIGNAL_FILE"
 
-# Update task status BEFORE webhook (so agent sees fresh state)
+# Update task status immediately so any follow-up sees fresh state.
 if [[ "$EXIT_CODE" == "0" ]]; then
-  "$SCRIPT_DIR/update-task-status.sh" "$TASK_ID" "done" "$COMMIT_HASH" "$TOKENS_JSON" 2>&1 || true
+  if STATUS_UPDATE_OUTPUT=$("$SCRIPT_DIR/update-task-status.sh" "$TASK_ID" "done" "$COMMIT_HASH" "$TOKENS_JSON" 2>&1); then
+    STATUS_UPDATE_EC=0
+  else
+    STATUS_UPDATE_EC=$?
+  fi
 else
-  "$SCRIPT_DIR/update-task-status.sh" "$TASK_ID" "failed" "$COMMIT_HASH" "$TOKENS_JSON" 2>&1 || true
+  if STATUS_UPDATE_OUTPUT=$("$SCRIPT_DIR/update-task-status.sh" "$TASK_ID" "failed" "$COMMIT_HASH" "$TOKENS_JSON" 2>&1); then
+    STATUS_UPDATE_EC=0
+  else
+    STATUS_UPDATE_EC=$?
+  fi
 fi
 
 # Kill dispatch heartbeat for this session (was keeping last_seen alive)
@@ -62,71 +71,38 @@ fi
 "$SCRIPT_DIR/agent-manager.sh" 2>/dev/null &
 
 # Read config
-HOOK_TOKEN=$(cat "$SWARM_DIR/hook-token" 2>/dev/null || echo "")
 NOTIFY_TARGET=$(cat "$SWARM_DIR/notify-target" 2>/dev/null || echo "")
-GATEWAY_URL="http://127.0.0.1:18789"
 
-# ── Idempotency guard ──────────────────────────────────────────────────────
-# Deduplicate webhook triggers within a 30-second window.
-# Prevents double-dispatch from network retries or rapid re-invocations.
-# Key = task_id + timestamp bucket (30s granularity).
-IDEM_DIR="/tmp/agent-swarm-idem"
-mkdir -p "$IDEM_DIR"
-IDEM_BUCKET=$(( TS / 30 ))
-IDEM_KEY="${TASK_ID}-${IDEM_BUCKET}"
-IDEM_FILE="${IDEM_DIR}/${IDEM_KEY}"
-if [[ -f "$IDEM_FILE" ]]; then
-  echo "⚠️  Webhook already fired for $TASK_ID in this window (idem key: $IDEM_KEY) — skipping" >&2
-  exit 0
+TASK_NAME="$TASK_ID"
+if [[ -f "$TASKS_FILE" ]]; then
+  TASK_NAME=$(python3 - "$TASKS_FILE" "$TASK_ID" <<'PYEOF'
+import json
+import sys
+
+tasks_file, task_id = sys.argv[1], sys.argv[2]
+
+try:
+    with open(tasks_file) as f:
+        data = json.load(f)
+except Exception:
+    print(task_id)
+    raise SystemExit(0)
+
+for task in data.get("tasks", []):
+    if task.get("id") == task_id:
+        print(task.get("name") or task_id)
+        raise SystemExit(0)
+
+print(task_id)
+PYEOF
+)
 fi
-touch "$IDEM_FILE"
-# Auto-clean keys older than 5 minutes to avoid stale file accumulation
-find "$IDEM_DIR" -maxdepth 1 -name "T*" -mmin +5 -delete 2>/dev/null &
 
-# Primary: trigger isolated agent turn via /hooks/agent
-# This agent will: check scope, apply review_level, update tasks, dispatch next
-if [[ -n "$HOOK_TOKEN" ]]; then
-  AGENT_MSG="Swarm 任务完成信号：
-- task: $TASK_ID
-- agent: $SESSION
-- exit_code: $EXIT_CODE
-- commit: $COMMIT_HASH
-- commit_msg: $COMMIT_MSG
-
-active-tasks.json 已由脚本自动更新（状态已标记，依赖已解锁）。
-
-请执行以下步骤：
-1. 读取 ~/.openclaw/workspace/swarm/active-tasks.json 查看当前状态
-2. 验证 commit scope（git diff $COMMIT_HASH~1 $COMMIT_HASH --stat）
-3. 根据该任务的 review_level 处理：
-   - skip/scan: 确认 scope 合理即可
-   - full: 派 cross-review agent（cc-review 或 codex-review）到对应 tmux session
-4. 找到所有 status=pending 的任务，按依赖顺序 dispatch 到空闲 agent
-5. 如果全部任务 done，发送汇总通知"
-
-  # Escape for JSON
-  AGENT_MSG_JSON=$(echo "$AGENT_MSG" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')
-
-  curl -s -X POST "$GATEWAY_URL/hooks/agent" \
-    -H "Authorization: Bearer $HOOK_TOKEN" \
-    -H "Content-Type: application/json" \
-    -d "{
-      \"message\": $AGENT_MSG_JSON,
-      \"name\": \"swarm-dispatch\",
-      \"sessionKey\": \"hook:swarm:dispatch\",
-      \"deliver\": true,
-      \"channel\": \"telegram\",
-      \"to\": \"$NOTIFY_TARGET\",
-      \"model\": \"anthropic/claude-sonnet-4-20250514\",
-      \"thinking\": \"low\",
-      \"timeoutSeconds\": 120
-    }" >/dev/null 2>&1 &
-fi
+openclaw system event --text "Done: $TASK_ID $TASK_NAME" --mode now 2>/dev/null || true
 
 # ── Token milestone check ──────────────────────────────────────────────────
 # Read active-tasks.json and compute cumulative swarm tokens.
 # Send a warning if we just crossed a threshold (50k / 100k input tokens).
-TASKS_FILE="$HOME/.openclaw/workspace/swarm/active-tasks.json"
 TOKEN_WARNING_FILE="/tmp/agent-swarm-token-warned.json"
 
 if [[ -f "$TASKS_FILE" && -n "$NOTIFY_TARGET" ]]; then

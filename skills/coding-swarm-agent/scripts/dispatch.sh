@@ -5,7 +5,7 @@
 # Wraps the agent command so that:
 # 1. Task status is updated to "running" before execution
 # 2. Agent stdout is captured to a log file for token parsing
-# 3. on-complete.sh fires when command finishes (updates status + triggers webhook)
+# 3. on-complete.sh fires when command finishes (updates status + wakes main session)
 # 4. Post-commit force-commit fallback catches agents that forget to commit
 #
 # Shell compatibility:

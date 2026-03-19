@@ -3,7 +3,7 @@
 # Usage: update-task-status.sh <task_id> <new_status> [commit_hash] [tokens_json]
 #
 # tokens_json: optional JSON string e.g. '{"input":1234,"output":567,"cache_read":0,"cache_write":0}'
-# This runs BEFORE the webhook agent, so the agent sees already-updated state.
+# This updates active-tasks.json synchronously before any follow-up handling.
 
 set -euo pipefail
 
@@ -24,8 +24,8 @@ if [[ ! -f "$TASKS_FILE" ]]; then
 fi
 
 # Update task status + commit + tokens + timestamp, and auto-unblock dependents.
-# Uses flock to serialize concurrent writers (e.g. two webhook agents racing to
-# dispatch the same pending task).
+# Uses flock to serialize concurrent writers (e.g. multiple agents finishing at
+# nearly the same time).
 # Special behaviour when new_status == "running":
 #   - Only transitions from pending/failed → running (check-and-set)
 #   - If the task is already running/done, exits with code 2 (already claimed)
