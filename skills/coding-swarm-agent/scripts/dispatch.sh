@@ -19,23 +19,31 @@ SESSION="${1:?Usage: dispatch.sh <session> <task_id> <command...>}"
 TASK_ID="${2:?}"
 shift 2
 
-# Support --prompt-file <file> as first argument after task_id
-# Reads prompt from file and appends as last quoted arg to the remaining command.
+# Support --prompt-file <file> as first argument after task_id.
+# The prompt is copied to a temp file and consumed by the agent runner script so
+# markdown/code blocks/newlines are preserved without shell-escaping issues.
 # Usage: dispatch.sh <session> <task_id> --prompt-file /tmp/prompt.txt codex exec ...
 PROMPT_FILE=""
+PROMPT_TMP_FILE=""
+DISPATCHED=false
+cleanup_prompt_tmp() {
+  if [[ "$DISPATCHED" != "true" ]] && [[ -n "${PROMPT_TMP_FILE:-}" ]] && [[ -f "$PROMPT_TMP_FILE" ]]; then
+    rm -f "$PROMPT_TMP_FILE"
+  fi
+}
+trap cleanup_prompt_tmp EXIT
 if [[ "${1:-}" == "--prompt-file" ]]; then
   PROMPT_FILE="${2:?--prompt-file requires a path}"
   shift 2
 fi
 
-COMMAND="$*"
+COMMAND_ARGS=("$@")
+COMMAND_LITERAL="$(printf ' %q' "${COMMAND_ARGS[@]}")"
+COMMAND_LITERAL="${COMMAND_LITERAL# }"
 
-# If --prompt-file was given, append the file content as a quoted argument
 if [[ -n "$PROMPT_FILE" ]]; then
-  PROMPT_CONTENT="$(cat "$PROMPT_FILE")"
-  # Escape single quotes inside the prompt
-  PROMPT_ESCAPED="${PROMPT_CONTENT//\'/\'\\\'\'}"
-  COMMAND="${COMMAND} '${PROMPT_ESCAPED}'"
+  PROMPT_TMP_FILE="$(mktemp "/tmp/agent-swarm-prompt-${TASK_ID}-${SESSION}.XXXXXX.txt")"
+  cat "$PROMPT_FILE" > "$PROMPT_TMP_FILE"
 fi
 
 SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -66,15 +74,29 @@ fi
 # Mark agent as busy in pool
 "$SCRIPT_DIR/update-agent-status.sh" "$SESSION" "busy" "$TASK_ID" 2>/dev/null || true
 
-# ── Detect CC JSON mode ──────────────────────────────────────────────────────
-# Only match when the actual binary is `claude` AND the flag appears outside quoted
-# strings (strip single/double-quoted substrings before grepping).
-# This prevents a prompt that merely mentions "--output-format json" from misfiring.
-_CMD_BIN=$(echo "$COMMAND" | awk '{print $1}' | xargs basename 2>/dev/null || true)
-_CMD_FLAGS=$(echo "$COMMAND" | sed "s/'[^']*'//g" | sed 's/"[^"]*"//g')
+# ── Detect command mode ──────────────────────────────────────────────────────
+_CMD_BIN="$(basename "${COMMAND_ARGS[0]}" 2>/dev/null || true)"
 _CC_JSON_MODE=false
-if [[ "$_CMD_BIN" == "claude" ]] && echo "$_CMD_FLAGS" | grep -q -- '--output-format[[:space:]]*json'; then
-  _CC_JSON_MODE=true
+if [[ "$_CMD_BIN" == "claude" ]]; then
+  for ((i = 1; i < ${#COMMAND_ARGS[@]}; i++)); do
+    if [[ "${COMMAND_ARGS[i]}" == "--output-format=json" ]]; then
+      _CC_JSON_MODE=true
+      break
+    fi
+    if [[ "${COMMAND_ARGS[i]}" == "--output-format" ]] && (( i + 1 < ${#COMMAND_ARGS[@]} )) && [[ "${COMMAND_ARGS[i + 1]}" == "json" ]]; then
+      _CC_JSON_MODE=true
+      break
+    fi
+  done
+fi
+
+PROMPT_MODE="none"
+if [[ -n "$PROMPT_TMP_FILE" ]]; then
+  if [[ "$_CMD_BIN" == "claude" ]]; then
+    PROMPT_MODE="stdin"
+  else
+    PROMPT_MODE="append"
+  fi
 fi
 
 # ── Build agent runner script ────────────────────────────────────────────────
@@ -97,10 +119,34 @@ ON_COMPLETE="${ON_COMPLETE}"
 TASK_ID="${TASK_ID}"
 SESSION="${SESSION}"
 WORKDIR="\$(pwd)"
+PROMPT_TMP_FILE="${PROMPT_TMP_FILE}"
+PROMPT_MODE="${PROMPT_MODE}"
+COMMAND=( ${COMMAND_LITERAL} )
+
+cleanup() {
+  if [[ -n "\${PROMPT_TMP_FILE}" ]] && [[ -f "\${PROMPT_TMP_FILE}" ]]; then
+    rm -f "\${PROMPT_TMP_FILE}"
+  fi
+}
+trap cleanup EXIT
+
+run_agent() {
+  case "\${PROMPT_MODE}" in
+    stdin)
+      cat "\${PROMPT_TMP_FILE}" | "\${COMMAND[@]}"
+      ;;
+    append)
+      "\${COMMAND[@]}" "\$(cat "\${PROMPT_TMP_FILE}")"
+      ;;
+    *)
+      "\${COMMAND[@]}"
+      ;;
+  esac
+}
 
 # Run agent: stdout only → python intercept → tee to LOG_FILE
 # stderr is NOT merged (2>&1 omitted) so CC's JSON stdout stays clean
-${COMMAND} 2>/dev/null | python3 -c "
+run_agent 2>/dev/null | python3 -c "
 import sys, json
 sidecar = sys.argv[1]
 raw = sys.stdin.read()
@@ -139,9 +185,33 @@ ON_COMPLETE="${ON_COMPLETE}"
 TASK_ID="${TASK_ID}"
 SESSION="${SESSION}"
 WORKDIR="\$(pwd)"
+PROMPT_TMP_FILE="${PROMPT_TMP_FILE}"
+PROMPT_MODE="${PROMPT_MODE}"
+COMMAND=( ${COMMAND_LITERAL} )
+
+cleanup() {
+  if [[ -n "\${PROMPT_TMP_FILE}" ]] && [[ -f "\${PROMPT_TMP_FILE}" ]]; then
+    rm -f "\${PROMPT_TMP_FILE}"
+  fi
+}
+trap cleanup EXIT
+
+run_agent() {
+  case "\${PROMPT_MODE}" in
+    stdin)
+      cat "\${PROMPT_TMP_FILE}" | "\${COMMAND[@]}"
+      ;;
+    append)
+      "\${COMMAND[@]}" "\$(cat "\${PROMPT_TMP_FILE}")"
+      ;;
+    *)
+      "\${COMMAND[@]}"
+      ;;
+  esac
+}
 
 # Run agent, tee output to log
-${COMMAND} 2>&1 | tee "\${LOG_FILE}"
+run_agent 2>&1 | tee "\${LOG_FILE}"
 EC=\${PIPESTATUS[0]}
 
 # Force-commit any uncommitted changes
@@ -167,6 +237,7 @@ WRAPPED="bash ${SCRIPT_FILE}"
 
 tmux send-keys -t "$SESSION" -l -- "$WRAPPED"
 tmux send-keys -t "$SESSION" Enter
+DISPATCHED=true
 
 # ── Background heartbeat ─────────────────────────────────────────────────────
 # Keeps last_seen fresh every 5 min so health-check.sh doesn't flag us as stuck
