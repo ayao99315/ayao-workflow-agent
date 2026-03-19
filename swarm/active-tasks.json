@@ -3,7 +3,7 @@
   "project": "coding-swarm-agent",
   "repo": "github.com/ayao99315/coding-swarm-agent",
   "created_at": "2026-03-19T23:17:24Z",
-  "updated_at": "2026-03-19T23:18:07.882031+00:00",
+  "updated_at": "2026-03-19T23:23:23.090048+00:00",
   "tasks": [
     {
       "id": "SWARM-ARCH-T001",
@@ -11,19 +11,21 @@
       "domain": "backend",
       "agent": "codex-1",
       "tmux": "codex-1",
-      "status": "running",
+      "status": "done",
       "review_level": "scan",
       "milestone": null,
       "note": "新增脚本，处理批次归档和新建逻辑",
-      "commits": [],
+      "commits": [
+        "eafd88c"
+      ],
       "issue": null,
       "depends_on": [],
       "created_at": "2026-03-19T23:17:38Z",
-      "updated_at": "2026-03-19T23:18:07.882031+00:00",
+      "updated_at": "2026-03-19T23:22:14.872347+00:00",
       "attempts": 0,
       "max_attempts": 3,
       "tokens": {
-        "input": 0,
+        "input": 38795,
         "output": 0,
         "cache_read": 0,
         "cache_write": 0
@@ -35,7 +37,7 @@
       "domain": "backend",
       "agent": "codex-1",
       "tmux": "codex-1",
-      "status": "blocked",
+      "status": "running",
       "review_level": "scan",
       "milestone": null,
       "note": "依赖 T001 确认新结构后再改 on-complete",
@@ -45,7 +47,7 @@
         "SWARM-ARCH-T001"
       ],
       "created_at": "2026-03-19T23:17:38Z",
-      "updated_at": "2026-03-19T23:17:38Z",
+      "updated_at": "2026-03-19T23:23:23.090048+00:00",
       "attempts": 0,
       "max_attempts": 3,
       "tokens": {

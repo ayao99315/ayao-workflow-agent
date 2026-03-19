@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-03-19T23:18:07.911623+00:00",
+  "updated_at": "2026-03-19T23:23:23.119928+00:00",
   "limits": {
     "max_codex": 4,
     "max_cc_frontend": 2,
@@ -46,6 +46,16 @@
       "current_task": null,
       "spawned_at": null,
       "last_seen": "2026-03-19T17:36:26.354660+00:00"
+    },
+    {
+      "id": "codex-2",
+      "type": "codex",
+      "domain": "backend",
+      "tmux": "codex-2",
+      "status": "idle",
+      "current_task": null,
+      "spawned_at": "2026-03-19T23:22:15Z",
+      "last_seen": "2026-03-19T23:22:15Z"
     }
   ]
 }
