@@ -225,13 +225,22 @@ if not tasks or any(t.get("status") != "done" for t in tasks):
     print("")
     raise SystemExit(0)
 
+# Only count tasks from the current batch (batch_started_at if present)
+batch_started_at = data.get("batch_started_at")
+if batch_started_at:
+    batch_tasks = [t for t in tasks if (t.get("updated_at") or "") >= batch_started_at]
+    if not batch_tasks:
+        batch_tasks = tasks  # fallback
+else:
+    batch_tasks = tasks
+
 fingerprint = hashlib.sha1(
     json.dumps(
         {
             "project": data.get("project"),
             "tasks": [
                 {"id": t.get("id"), "created_at": t.get("created_at")}
-                for t in tasks
+                for t in batch_tasks
             ],
         },
         sort_keys=True,
@@ -245,14 +254,14 @@ if sent_file.exists():
 
 sent_file.write_text(data.get("updated_at", "done"), encoding="utf-8")
 
-total_input = sum(t.get("tokens", {}).get("input", 0) for t in tasks)
-total_output = sum(t.get("tokens", {}).get("output", 0) for t in tasks)
-total_cache_r = sum(t.get("tokens", {}).get("cache_read", 0) for t in tasks)
-total_cache_w = sum(t.get("tokens", {}).get("cache_write", 0) for t in tasks)
+total_input = sum(t.get("tokens", {}).get("input", 0) for t in batch_tasks)
+total_output = sum(t.get("tokens", {}).get("output", 0) for t in batch_tasks)
+total_cache_r = sum(t.get("tokens", {}).get("cache_read", 0) for t in batch_tasks)
+total_cache_w = sum(t.get("tokens", {}).get("cache_write", 0) for t in batch_tasks)
 project = data.get("project") or "swarm"
-done_count = len(tasks)
+done_count = len(batch_tasks)
 commits = []
-for task in tasks:
+for task in batch_tasks:
     for commit in task.get("commits", []):
         if commit and commit not in commits:
             commits.append(commit)
