@@ -3,7 +3,7 @@
   "project": "coding-swarm-agent",
   "repo": "github.com/ayao99315/coding-swarm-agent",
   "created_at": "2026-03-20T01:29:20Z",
-  "updated_at": "2026-03-20T01:43:15.337260+00:00",
+  "updated_at": "2026-03-20T05:06:16.098900+00:00",
   "tasks": [
     {
       "id": "PLAN-T001",
@@ -154,7 +154,8 @@
       "review_level": "full",
       "note": "检查 SKILL.md/prompt-cc-plan.md/playbook.md 规范一致，docs 目录结构正确，没有遗漏",
       "commits": [
-        "571f86fd0c08c84d11b4cd31e83cc66be923dffb"
+        "571f86fd0c08c84d11b4cd31e83cc66be923dffb",
+        "7f51977"
       ],
       "issue": null,
       "depends_on": [
@@ -162,7 +163,30 @@
         "PLAN-T005"
       ],
       "created_at": "2026-03-20T01:29:47Z",
-      "updated_at": "2026-03-20T01:43:15.337260+00:00",
+      "updated_at": "2026-03-20T01:43:47.368592+00:00",
+      "attempts": 0,
+      "max_attempts": 3,
+      "tokens": {
+        "input": 6,
+        "output": 2039,
+        "cache_read": 112353,
+        "cache_write": 8831
+      }
+    },
+    {
+      "id": "ARCH-REVIEW",
+      "name": "整体架构 + 代码 review：验证 swarm 流程设计合理性",
+      "domain": "backend",
+      "agent": "cc-review",
+      "tmux": "cc-review",
+      "status": "running",
+      "review_level": "full",
+      "note": "架构级全面 review，不只看代码实现，也评判设计合理性",
+      "commits": [],
+      "issue": null,
+      "depends_on": [],
+      "created_at": "2026-03-20T05:06:06Z",
+      "updated_at": "2026-03-20T05:06:16.098900+00:00",
       "attempts": 0,
       "max_attempts": 3,
       "tokens": {
