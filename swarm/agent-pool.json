@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-03-20T05:11:16.375137+00:00",
+  "updated_at": "2026-03-20T05:45:11.772556+00:00",
   "limits": {
     "max_codex": 4,
     "max_cc_frontend": 2,
@@ -33,9 +33,9 @@
       "domain": "review",
       "tmux": "cc-review",
       "status": "busy",
-      "current_task": "ARCH-REVIEW",
+      "current_task": "FIX-H5",
       "spawned_at": null,
-      "last_seen": "2026-03-20T05:11:16.375137+00:00"
+      "last_seen": "2026-03-20T05:45:11.772556+00:00"
     },
     {
       "id": "codex-review",

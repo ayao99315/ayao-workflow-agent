@@ -1,192 +1,99 @@
 {
-  "batch_id": "2026-03-20-coding-swarm-agent-2",
+  "batch_id": "2026-03-20-coding-swarm-agent-3",
   "project": "coding-swarm-agent",
   "repo": "github.com/ayao99315/coding-swarm-agent",
-  "created_at": "2026-03-20T01:29:20Z",
-  "updated_at": "2026-03-20T05:06:16.098900+00:00",
+  "created_at": "2026-03-20T05:41:44Z",
+  "updated_at": "2026-03-20T05:45:11.744466+00:00",
   "tasks": [
     {
-      "id": "PLAN-T001",
-      "name": "更新 SKILL.md：加入三层 Plan 规范 + 文档目录结构",
+      "id": "FIX-H1H2H3",
+      "name": "修复 update-task-status.sh + dispatch.sh：flock race guard / tmux写入 / heartbeat刷新",
       "domain": "backend",
       "agent": "codex-1",
       "tmux": "codex-1",
-      "status": "done",
-      "review_level": "scan",
-      "note": "在 SKILL.md 里加 Documentation Rules 章节，说明需求/设计/计划三层分工和目录规范",
-      "commits": [
-        "dc8a90e"
-      ],
-      "issue": null,
-      "depends_on": [],
-      "created_at": "2026-03-20T01:29:47Z",
-      "updated_at": "2026-03-20T01:33:03.853443+00:00",
-      "attempts": 0,
-      "max_attempts": 3,
-      "tokens": {
-        "input": 23209,
-        "output": 0,
-        "cache_read": 0,
-        "cache_write": 0
-      }
-    },
-    {
-      "id": "PLAN-T002",
-      "name": "更新 prompt-cc-plan.md：要求 cc-plan 同时输出 docs/design/ 设计文档",
-      "domain": "backend",
-      "agent": "codex-1",
-      "tmux": "codex-1",
-      "status": "done",
-      "review_level": "scan",
-      "note": "cc-plan prompt 模板加入强制输出设计文档到 docs/design/ 的要求",
-      "commits": [
-        "482bdd795e80dba3ded8e6aa2bfedfe30fa5598e",
-        "a763b70"
-      ],
-      "issue": null,
-      "depends_on": [
-        "PLAN-T001"
-      ],
-      "created_at": "2026-03-20T01:29:47Z",
-      "updated_at": "2026-03-20T01:36:20.067797+00:00",
-      "attempts": 0,
-      "max_attempts": 3,
-      "tokens": {
-        "input": 7,
-        "output": 1647,
-        "cache_read": 129400,
-        "cache_write": 4568
-      }
-    },
-    {
-      "id": "PLAN-T003",
-      "name": "新增 references/prompt-requirements.md：需求文档模板",
-      "domain": "backend",
-      "agent": "codex-1",
-      "tmux": "codex-1",
-      "status": "done",
-      "review_level": "skip",
-      "note": "新增需求文档模板，供 C 档复杂任务使用",
-      "commits": [
-        "6d72cc6",
-        "1620be3"
-      ],
-      "issue": null,
-      "depends_on": [
-        "PLAN-T001"
-      ],
-      "created_at": "2026-03-20T01:29:47Z",
-      "updated_at": "2026-03-20T01:39:39.942374+00:00",
-      "attempts": 0,
-      "max_attempts": 3,
-      "tokens": {
-        "input": 0,
-        "output": 0,
-        "cache_read": 0,
-        "cache_write": 0
-      }
-    },
-    {
-      "id": "PLAN-T004",
-      "name": "更新 playbook.md：第 5 章加三层 plan 规范，第 18 章加 v2.6 条目",
-      "domain": "backend",
-      "agent": "codex-1",
-      "tmux": "codex-1",
-      "status": "done",
-      "review_level": "scan",
-      "note": "playbook 第 5 章加 Plan 分档规范说明，第 18 章记录这次变更",
-      "commits": [
-        "571f86fd0c08c84d11b4cd31e83cc66be923dffb",
-        "a763b70"
-      ],
-      "issue": null,
-      "depends_on": [
-        "PLAN-T001",
-        "PLAN-T002",
-        "PLAN-T003"
-      ],
-      "created_at": "2026-03-20T01:29:47Z",
-      "updated_at": "2026-03-20T01:42:00.196750+00:00",
-      "attempts": 0,
-      "max_attempts": 3,
-      "tokens": {
-        "input": 9,
-        "output": 2267,
-        "cache_read": 309574,
-        "cache_write": 27367
-      }
-    },
-    {
-      "id": "PLAN-T005",
-      "name": "在 coding-swarm-agent 和 PolyGo 两个 repo 建立 docs/ 子目录结构",
-      "domain": "backend",
-      "agent": "codex-1",
-      "tmux": "codex-1",
-      "status": "done",
-      "review_level": "skip",
-      "note": "两个 repo 各建 docs/swarm/ docs/design/ docs/requirements/，迁移 PolyGo 已有文档，提交",
-      "commits": [
-        "363d7ce",
-        "514821a"
-      ],
-      "issue": null,
-      "depends_on": [
-        "PLAN-T001"
-      ],
-      "created_at": "2026-03-20T01:29:47Z",
-      "updated_at": "2026-03-20T01:39:39.982971+00:00",
-      "attempts": 0,
-      "max_attempts": 3,
-      "tokens": {
-        "input": 0,
-        "output": 0,
-        "cache_read": 0,
-        "cache_write": 0
-      }
-    },
-    {
-      "id": "PLAN-REVIEW",
-      "name": "Review 所有变更：验证规范一致性、文档完整性、目录结构正确",
-      "domain": "backend",
-      "agent": "cc-review",
-      "tmux": "cc-review",
-      "status": "done",
-      "review_level": "full",
-      "note": "检查 SKILL.md/prompt-cc-plan.md/playbook.md 规范一致，docs 目录结构正确，没有遗漏",
-      "commits": [
-        "571f86fd0c08c84d11b4cd31e83cc66be923dffb",
-        "7f51977"
-      ],
-      "issue": null,
-      "depends_on": [
-        "PLAN-T004",
-        "PLAN-T005"
-      ],
-      "created_at": "2026-03-20T01:29:47Z",
-      "updated_at": "2026-03-20T01:43:47.368592+00:00",
-      "attempts": 0,
-      "max_attempts": 3,
-      "tokens": {
-        "input": 6,
-        "output": 2039,
-        "cache_read": 112353,
-        "cache_write": 8831
-      }
-    },
-    {
-      "id": "ARCH-REVIEW",
-      "name": "整体架构 + 代码 review：验证 swarm 流程设计合理性",
-      "domain": "backend",
-      "agent": "cc-review",
-      "tmux": "cc-review",
       "status": "running",
       "review_level": "full",
-      "note": "架构级全面 review，不只看代码实现，也评判设计合理性",
+      "note": "H1+H2+H3 集中在同两个文件，一次修完",
       "commits": [],
       "issue": null,
       "depends_on": [],
-      "created_at": "2026-03-20T05:06:06Z",
-      "updated_at": "2026-03-20T05:06:16.098900+00:00",
+      "created_at": "2026-03-20T05:43:56Z",
+      "updated_at": "2026-03-20T05:45:08.576796+00:00",
+      "attempts": 0,
+      "max_attempts": 3,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      }
+    },
+    {
+      "id": "FIX-H4",
+      "name": "修复 dispatch.sh force-commit：git add -A → git add -u 避免敏感文件泄漏",
+      "domain": "backend",
+      "agent": "codex-1",
+      "tmux": "codex-1",
+      "status": "blocked",
+      "review_level": "scan",
+      "note": "H4 单独拆，依赖 H1H2H3 完成后的 dispatch.sh 版本",
+      "commits": [],
+      "issue": null,
+      "depends_on": [
+        "FIX-H1H2H3"
+      ],
+      "created_at": "2026-03-20T05:43:56Z",
+      "updated_at": "2026-03-20T05:43:56Z",
+      "attempts": 0,
+      "max_attempts": 3,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      }
+    },
+    {
+      "id": "FIX-H5",
+      "name": "修正 SKILL.md 自动化描述：删除旧 webhook 描述，改为 openclaw system event 说明",
+      "domain": "backend",
+      "agent": "codex-1",
+      "tmux": "codex-1",
+      "status": "running",
+      "review_level": "scan",
+      "note": "纯文档修改，与脚本修改无依赖，可并行",
+      "commits": [],
+      "issue": null,
+      "depends_on": [],
+      "created_at": "2026-03-20T05:43:56Z",
+      "updated_at": "2026-03-20T05:45:11.744466+00:00",
+      "attempts": 0,
+      "max_attempts": 3,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      }
+    },
+    {
+      "id": "FIX-REVIEW",
+      "name": "Review FIX-H1H2H3 + FIX-H4 + FIX-H5：验证所有修复正确",
+      "domain": "backend",
+      "agent": "cc-review",
+      "tmux": "cc-review",
+      "status": "blocked",
+      "review_level": "full",
+      "note": "重点验证 flock race guard、heartbeat 有效性、SKILL.md 一致性",
+      "commits": [],
+      "issue": null,
+      "depends_on": [
+        "FIX-H1H2H3",
+        "FIX-H4",
+        "FIX-H5"
+      ],
+      "created_at": "2026-03-20T05:43:56Z",
+      "updated_at": "2026-03-20T05:43:56Z",
       "attempts": 0,
       "max_attempts": 3,
       "tokens": {

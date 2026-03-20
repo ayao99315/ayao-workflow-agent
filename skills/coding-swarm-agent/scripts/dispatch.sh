@@ -106,7 +106,7 @@ SCRIPT_FILE="$(make_temp_file "agent-swarm-run-${TASK_ID}-${SESSION}")"
 # ── Mark task as running ─────────────────────────────────────────────────────
 # Use if-then-else to capture exit code without triggering set -e on non-zero return.
 # update-task-status.sh exits 2 when task is already claimed by another agent.
-if "$UPDATE_STATUS" "$TASK_ID" "running" 2>&1; then
+if "$UPDATE_STATUS" "$TASK_ID" "running" "" "" "$SESSION" 2>&1; then
   CLAIM_EC=0
 else
   CLAIM_EC=$?
@@ -275,12 +275,13 @@ tmux send-keys -t "$SESSION" Enter
 DISPATCHED=true
 
 # ── Background heartbeat ─────────────────────────────────────────────────────
-# Keeps last_seen fresh every 5 min so health-check.sh doesn't flag us as stuck
+# Keeps task.updated_at and agent last_seen fresh every 5 min so health-check.sh doesn't flag us as stuck
 HEARTBEAT_PID_FILE="/tmp/agent-swarm-heartbeat-${SESSION}.pid"
 (
   while true; do
     sleep 300
     tmux has-session -t "$SESSION" 2>/dev/null || break
+    "$SCRIPT_DIR/update-task-status.sh" "$TASK_ID" "running" 2>/dev/null || true
     "$SCRIPT_DIR/update-agent-status.sh" "$SESSION" "busy" "$TASK_ID" 2>/dev/null || true
   done
 ) >/dev/null 2>&1 &

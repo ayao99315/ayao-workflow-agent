@@ -1,16 +1,17 @@
 #!/bin/bash
 # update-task-status.sh — Atomically update a task's status in active-tasks.json
-# Usage: update-task-status.sh <task_id> <new_status> [commit_hash] [tokens_json]
+# Usage: update-task-status.sh <task_id> <new_status> [commit_hash] [tokens_json] [tmux_session]
 #
 # tokens_json: optional JSON string e.g. '{"input":1234,"output":567,"cache_read":0,"cache_write":0}'
 # This updates active-tasks.json synchronously before any follow-up handling.
 
 set -euo pipefail
 
-TASK_ID="${1:?Usage: update-task-status.sh <task_id> <status> [commit_hash] [tokens_json]}"
+TASK_ID="${1:?Usage: update-task-status.sh <task_id> <status> [commit_hash] [tokens_json] [tmux_session]}"
 NEW_STATUS="${2:?}"
 COMMIT_HASH="${3:-}"
 TOKENS_JSON="${4:-}"
+TMUX_SESSION="${5:-}"
 
 TASKS_FILE="$HOME/.openclaw/workspace/swarm/active-tasks.json"
 LOCK_FILE="${TASKS_FILE}.lock"
@@ -27,11 +28,13 @@ fi
 # Uses flock to serialize concurrent writers (e.g. multiple agents finishing at
 # nearly the same time).
 # Special behaviour when new_status == "running":
-#   - Only transitions from pending/failed → running (check-and-set)
-#   - If the task is already running/done, exits with code 2 (already claimed)
-#     so dispatch.sh knows to abort without sending the tmux command.
-(
+#   - pending/failed/retrying → running claims the task (check-and-set)
+#   - running → running is treated as heartbeat and only refreshes updated_at
+#   - Other running transitions exit with code 2 so dispatch.sh skips duplicate dispatch
+exec 200>"$LOCK_FILE"
 flock -x 200
+
+set +e
 python3 -c "
 import json, sys
 from datetime import datetime, timezone
@@ -40,6 +43,7 @@ task_id = '$TASK_ID'
 new_status = '$NEW_STATUS'
 commit_hash = '$COMMIT_HASH'
 tokens_raw = '''$TOKENS_JSON'''
+tmux_session = '$TMUX_SESSION'
 
 with open('$TASKS_FILE', 'r') as f:
     data = json.load(f)
@@ -59,14 +63,21 @@ for t in data.get('tasks', []):
     if t['id'] == task_id:
         current_status = t.get('status', '')
 
-        # Check-and-set for 'running': only claim if task is pending/failed.
-        # If already running or done, exit 2 → dispatch.sh will skip.
-        if new_status == 'running' and current_status not in ('pending', 'failed', 'retrying'):
-            print(f'SKIP: {task_id} already {current_status} (race-condition guard)', file=sys.stderr)
-            sys.exit(2)
+        if new_status == 'running':
+            if current_status == 'running':
+                t['updated_at'] = now
+                if tmux_session:
+                    t['tmux'] = tmux_session
+                updated = True
+                break
+            elif current_status not in ('pending', 'failed', 'retrying'):
+                print(f'SKIP: {task_id} already {current_status} (race-condition guard)', file=sys.stderr)
+                sys.exit(2)
 
         t['status'] = new_status
         t['updated_at'] = now
+        if new_status == 'running' and tmux_session:
+            t['tmux'] = tmux_session
         if commit_hash and commit_hash != 'none':
             if 'commits' not in t:
                 t['commits'] = []
@@ -112,8 +123,11 @@ if tokens:
     token_str = f' | tokens: in={tokens.get(\"input\",0)} out={tokens.get(\"output\",0)} cache_r={tokens.get(\"cache_read\",0)} cache_w={tokens.get(\"cache_write\",0)}'
 print(f'{task_id} -> {new_status}' + (f' (commit: {commit_hash})' if commit_hash else '') + token_str)
 "
-UTS_EC=${PIPESTATUS[0]:-$?}
-) 200>"$LOCK_FILE"
+UTS_EC=$?
+set -e
+
+flock -u 200
+exec 200>&-
 
 # If task just became done, check milestone completion in background
 if [[ "$NEW_STATUS" == "done" && "${UTS_EC:-0}" == "0" ]]; then
