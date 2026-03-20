@@ -52,6 +52,7 @@ You (orchestrator) = auditor + dispatcher, independent from the codebase
 
 ✅ Your job:
   - Understand requirements, decompose into atomic tasks
+  - When plan is needed: write requirements (docs/requirements/), dispatch cc-plan for design (docs/design/), then decompose tasks yourself
   - Write precise prompts for cc-plan / codex / cc-frontend
   - Dispatch all work via dispatch.sh
   - Review agent output (read git diff, check scope, assess quality)
@@ -77,6 +78,46 @@ When a new module or standalone feature is requested (e.g., backtest, new micros
 3. You     → review plan document + code output (read-only)
              → never touch the new directory yourself
 ```
+
+## Documentation Rules — Plan 三层规范
+
+### 三层分工
+
+- **Requirements**: 永远由编排层整理和落地，用于明确需求边界、目标、非目标和验收标准
+- **Design**: 需要代码探索时由 `cc-plan` 产出；不需要代码探索时由编排层直接写
+- **Plan / 任务拆解**: 永远由编排层负责，因为编排层最了解 swarm 粒度、文件边界和 agent 分配
+
+### 三档任务判断
+
+| 档位 | 判断标准 | 需求文档 | 设计文档 | 负责方 |
+| --- | --- | --- | --- | --- |
+| A | 一句话任务，目标和实现路径都清楚 | 不写 | 不写；prompt / 分析文件放 `docs/swarm/` | 编排层 |
+| B | 目标清楚，但实现方案仍需设计 | 不写 | 写到 `docs/design/` | 设计由 `cc-plan` 或编排层负责；任务拆解始终由编排层负责 |
+| C | 复杂或模糊，需求本身仍不确定 | 先写到 `docs/requirements/` | 再写到 `docs/design/` | Requirements 和 Plan 由编排层负责；Design 由 `cc-plan` 或编排层负责 |
+
+### 文档目录结构
+
+```text
+<project-or-skill-root>/
+  docs/
+    requirements/   ← 需求文档（编排层落，C 档复杂任务）
+    design/         ← 技术设计文档（cc-plan 出 或 编排层写）
+    swarm/          ← swarm dispatch prompt 文件、任务分析（编排层写，档位 A）
+```
+
+### 执行规则
+
+- Requirements、Design、Plan 是三层，不要混写，也不要把任务拆解塞给 `cc-plan`
+- 档位 A 不写 requirements/design 文档，直接把 prompt 和任务分析落到 `docs/swarm/`
+- 档位 B 先完成 design，再由编排层拆任务；如果设计需要探索代码，再调用 `cc-plan`
+- 档位 C 必须先收敛需求，先写 `docs/requirements/`，再进入 design 和任务拆解
+- 任何进入 swarm 的任务，最终任务拆解都由编排层完成，不能外包给设计代理
+
+### cc-plan 职责定位
+
+- `cc-plan` 的核心价值是探索代码库后输出 Design 文档
+- `cc-plan` 只负责 Design 层，不负责 Requirements，也不负责 Plan / 任务拆解
+- `cc-plan` 的产出必须写到 `docs/design/<feature>-design.md`
 
 ## Workflow
 
