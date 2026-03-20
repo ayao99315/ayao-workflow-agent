@@ -198,12 +198,16 @@ except Exception:
 EC=\${PIPESTATUS[0]}
 
 # Force-commit any uncommitted changes (catches agents that forget)
+# Use git add with pathspec to exclude workspace swarm/ files (active-tasks.json etc.)
 FC_EC=0
 if [ -n "\$(git -C "\${WORKDIR}" status --porcelain 2>/dev/null)" ]; then
-  git -C "\${WORKDIR}" add -A \
-    && git -C "\${WORKDIR}" commit -m "feat: ${TASK_ID} auto-commit (agent forgot)" \
-    && git -C "\${WORKDIR}" push \
-    || FC_EC=\$?
+  git -C "\${WORKDIR}" add -- . ':!../../swarm/' ':!../../reports/' ':!../../memory/' \
+    2>/dev/null || git -C "\${WORKDIR}" add -A
+  if [ -n "\$(git -C "\${WORKDIR}" diff --cached --name-only 2>/dev/null)" ]; then
+    git -C "\${WORKDIR}" commit -m "feat: ${TASK_ID} auto-commit (agent forgot)" \
+      && git -C "\${WORKDIR}" push \
+      || FC_EC=\$?
+  fi
 fi
 [ "\${FC_EC}" -ne 0 ] && EC="\${FC_EC}"
 
@@ -249,13 +253,17 @@ run_agent() {
 run_agent 2>&1 | tee "\${LOG_FILE}"
 EC=\${PIPESTATUS[0]}
 
-# Force-commit any uncommitted changes
+# Force-commit any uncommitted changes (catches agents that forget)
+# Use pathspec to exclude workspace swarm/ files (active-tasks.json etc.)
 FC_EC=0
 if [ -n "\$(git -C "\${WORKDIR}" status --porcelain 2>/dev/null)" ]; then
-  git -C "\${WORKDIR}" add -A \
-    && git -C "\${WORKDIR}" commit -m "feat: ${TASK_ID} auto-commit (agent forgot)" \
-    && git -C "\${WORKDIR}" push \
-    || FC_EC=\$?
+  git -C "\${WORKDIR}" add -- . ':!../../swarm/' ':!../../reports/' ':!../../memory/' \
+    2>/dev/null || git -C "\${WORKDIR}" add -A
+  if [ -n "\$(git -C "\${WORKDIR}" diff --cached --name-only 2>/dev/null)" ]; then
+    git -C "\${WORKDIR}" commit -m "feat: ${TASK_ID} auto-commit (agent forgot)" \
+      && git -C "\${WORKDIR}" push \
+      || FC_EC=\$?
+  fi
 fi
 [ "\${FC_EC}" -ne 0 ] && EC="\${FC_EC}"
 
