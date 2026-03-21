@@ -39,6 +39,28 @@ Working directory: [absolute path]
 
 ⚠️ 只做这一个任务，不要顺手修改或创建其他页面/组件。
 
+## 认知模式（每个决策点应用）
+
+1. **DRY 检查**：写代码前先用 grep/find 搜索，这个逻辑是否已经存在？存在就复用，不重复实现。
+2. **Boring by Default**：优先使用项目中已有的库、工具函数和模式，不发明新方案。
+3. **Blast Radius Check**：评估改动影响范围。若需修改 5 个以上文件，先暂停并在 commit message 中说明原因。
+4. **Two-Week Smell Test**：写完后问自己：两周后陌生人看这段代码，能立刻明白它在做什么吗？不能就加注释或重命名。
+
+## Completeness Principle（完整性原则）
+
+AI 时代，在 scope 内多写 50 行代码的边际成本 ≈ 0。当你面临选择时：
+
+**两条规则同时成立，不矛盾：**
+- **Scope 边界**（防止越界）：不要动 scope 之外的文件/模块
+- **Scope 内要做完整**：在你被允许动的范围内，选完整方案而非最小方案
+
+**具体行为：**
+- ✅ 在 scope 内发现明显的同类问题，一起修掉
+- ✅ 新增函数必须有对应的错误处理（不只是 happy path）
+- ✅ 能看到的 edge case 要处理，不要留 TODO
+- ❌ 不要：只修报错那一行，旁边明显的同类问题跳过
+- ❌ 不要：能看到 edge case 但写 `// TODO: handle this`
+
 ## Scope (strict — ONLY touch these files)
 - Create: [full relative paths]
 - Modify: [full relative paths]
