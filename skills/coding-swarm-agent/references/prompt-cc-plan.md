@@ -89,4 +89,21 @@ the final task list will be decided by the orchestration layer.
 - Backend tasks (API, logic, DB, infra) marked domain: "backend"
 - Shared type files: assign to the task that creates/changes the type, other tasks depend on it
 - Order tasks by dependency chain
+
+## Done When
+- 已探索相关代码并基于实际代码库写出设计文档
+- `docs/design/<feature>-design.md` 已包含要求的所有章节
+- Suggested Tasks 足够具体，可供编排层继续拆分
+
+## Contributor Mode（任务完成后填写）
+任务完成后，必须把下面的 field report 填入 git commit message body（subject line 后空一行，再粘贴 body）。
+请保留标题原样，按实际结果填写；如果某项没有内容，写"无"。
+
+## Field Report (Contributor Mode)
+### 做了什么
+- [list of key changes made]
+### 遇到的问题
+- [any issues encountered, or "无"]
+### 没做的事（或者留给下个人的）
+- [things explicitly skipped, or "无"]
 ```

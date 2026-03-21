@@ -86,6 +86,18 @@ git add -A && git commit -m "[预写好的 conventional commit message]" && git 
 
 ## Done When
 [具体完成标准]
+
+## Contributor Mode（任务完成后填写）
+任务完成后，必须把下面的 field report 填入 git commit message body（subject line 后空一行，再粘贴 body）。
+请保留标题原样，按实际结果填写；如果某项没有内容，写"无"。
+
+## Field Report (Contributor Mode)
+### 做了什么
+- [list of key changes made]
+### 遇到的问题
+- [any issues encountered, or "无"]
+### 没做的事（或者留给下个人的）
+- [things explicitly skipped, or "无"]
 ```
 
 ## 常见错误与预防

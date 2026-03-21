@@ -73,4 +73,22 @@ Rate each finding as one of:
 - Suggest concrete fixes, not vague concerns
 - Don't flag style issues as High
 - Don't flag "consider adding tests" as High unless the change is clearly risky
+
+## Done When
+- 已给出结构化 review 结论，且 verdict 与 findings 一致
+- 每个 Critical/High 问题都包含具体文件位置、问题描述和修复方向
+- 若无阻塞问题，明确说明 pass 的理由
+
+## Contributor Mode（任务完成后填写）
+任务完成后，必须把下面的 field report 填入 git commit message body（subject line 后空一行，再粘贴 body）。
+如果本次 review 没有产生 commit，也要在最终输出末尾附上同样的 field report。
+请保留标题原样，按实际结果填写；如果某项没有内容，写"无"。
+
+## Field Report (Contributor Mode)
+### 做了什么
+- [what was reviewed: commits/diff/files/task scope]
+### 遇到的问题
+- [issues found and verdict reason, or "无"]
+### 没做的事（或者留给下个人的）
+- [follow-up fixes or review gaps, or "无"]
 ```
