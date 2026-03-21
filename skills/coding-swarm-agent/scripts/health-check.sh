@@ -18,6 +18,16 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 NOTIFY_TARGET=$(cat "$HOME/.openclaw/workspace/swarm/notify-target" 2>/dev/null || echo "")
 NOW_TS=$(date +%s)
 
+run_prompt_validation() {
+  if [[ -x "$SCRIPT_DIR/validate-prompts.sh" ]]; then
+    "$SCRIPT_DIR/validate-prompts.sh" || true
+  else
+    echo "⚠️  validate-prompts.sh not found or not executable. Skipping prompt validation."
+  fi
+}
+
+trap run_prompt_validation EXIT
+
 if [[ ! -f "$TASKS_FILE" ]]; then
   echo "No active swarm. Exiting."
   exit 0
