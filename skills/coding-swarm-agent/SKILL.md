@@ -283,6 +283,7 @@ For each ready task (status=pending, dependencies met):
   ~/.openclaw/workspace/skills/coding-swarm-agent/scripts/review-dashboard.sh
   # 确认输出"可以发版 ✅"后再 dispatch
   ```
+  如需检查历史批次或其它任务文件，可追加 `--task-file /path/to/tasks.json`。
   Legacy single-string commands are still accepted for backward compatibility, but new docs should always use argv + `--prompt-file`.
   dispatch.sh automatically:
   1. Updates active-tasks.json status to `running`

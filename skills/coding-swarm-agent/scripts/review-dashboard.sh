@@ -35,6 +35,7 @@ fi
 
 python3 - "$TASK_FILE" <<'PYEOF'
 import json
+import re
 import sys
 
 task_file = sys.argv[1]
@@ -50,7 +51,9 @@ all_tasks = data.get("tasks", [])
 def is_review_task(task):
     agent = (task.get("agent") or "").strip()
     task_id = (task.get("id") or "").upper()
-    return agent in {"cc-review", "codex-review"} or "REVIEW" in task_id
+    return agent in {"cc-review", "codex-review"} or bool(
+        re.search(r"(^|-)REVIEW\d*$", task_id)
+    )
 
 
 done_tasks = [task for task in all_tasks if task.get("status") == "done"]
@@ -73,6 +76,13 @@ for task in target_tasks:
             if task_id in (review_task.get("name") or "")
         ]
         if matches:
+            matches.sort(
+                key=lambda item: (
+                    item.get("updated_at") or "",
+                    item.get("created_at") or "",
+                    item.get("id") or "",
+                )
+            )
             review_task = matches[-1]
             review_id = review_task.get("id", "REVIEW")
             commits = review_task.get("commits") or []
