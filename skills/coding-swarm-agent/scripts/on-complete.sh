@@ -210,9 +210,41 @@ import hashlib
 import json
 import os
 from pathlib import Path
+from datetime import datetime
 
 tasks_file = Path(os.path.expanduser("~/.openclaw/workspace/swarm/active-tasks.json"))
 sent_dir = Path(os.environ["COMPLETE_SENT_DIR"])
+
+
+def parse_time(value):
+    if not value:
+        return None
+    try:
+        if value.endswith("Z"):
+            value = value[:-1] + "+00:00"
+        return datetime.fromisoformat(value)
+    except Exception:
+        return None
+
+
+def format_k(value):
+    value = int(value or 0)
+    if value < 1000:
+        return str(value)
+    if value < 100000:
+        short = f"{value / 1000:.1f}k"
+        return short.replace(".0k", "k")
+    return f"{int(round(value / 1000.0))}k"
+
+
+def format_batch_duration(seconds):
+    if seconds is None or seconds < 0:
+        return ""
+    seconds = int(round(seconds))
+    if seconds < 60:
+        return "<1 分钟"
+    minutes = max(1, round(seconds / 60))
+    return f"约 {minutes} 分钟"
 
 try:
     data = json.loads(tasks_file.read_text())
@@ -249,12 +281,9 @@ if sent_file.exists():
     print("")
     raise SystemExit(0)
 
-sent_file.write_text(data.get("updated_at", "done"), encoding="utf-8")
-
 total_input = sum(t.get("tokens", {}).get("input", 0) for t in batch_tasks)
 total_output = sum(t.get("tokens", {}).get("output", 0) for t in batch_tasks)
 total_cache_r = sum(t.get("tokens", {}).get("cache_read", 0) for t in batch_tasks)
-total_cache_w = sum(t.get("tokens", {}).get("cache_write", 0) for t in batch_tasks)
 project = batch_project
 done_count = len(batch_tasks)
 commits = []
@@ -263,18 +292,30 @@ for task in batch_tasks:
         if commit and commit not in commits:
             commits.append(commit)
 
-message = (
-    f"✅ Swarm 全部完成！\n"
-    f"项目: {project}\n"
-    f"任务: {done_count}/{done_count} done\n"
-    f"commits: {len(commits)}\n"
-    f"累计 tokens:\n"
-    f"  📥 input:      {total_input:,}\n"
-    f"  📤 output:     {total_output:,}\n"
-    f"  💾 cache_read: {total_cache_r:,}\n"
-    f"  📝 cache_write:{total_cache_w:,}"
-)
-print(message)
+created_times = [parse_time(t.get("created_at")) for t in batch_tasks]
+updated_times = [parse_time(t.get("updated_at")) for t in batch_tasks]
+created_times = [t for t in created_times if t is not None]
+updated_times = [t for t in updated_times if t is not None]
+
+lines = [
+    f"🎉 Swarm 完成 — {project}",
+    f"✅ {done_count}/{done_count} 任务全部 done",
+    f"📦 共 {len(commits)} commits",
+]
+
+if total_input or total_output or total_cache_r:
+    token_line = f"📊 总 tokens: {format_k(total_input)} in / {format_k(total_output)} out"
+    if total_cache_r:
+        token_line += f" (+{format_k(total_cache_r)} cache)"
+    lines.append(token_line)
+
+if created_times and updated_times:
+    duration_text = format_batch_duration((max(updated_times) - min(created_times)).total_seconds())
+    if duration_text:
+        lines.append(f"⏱️ 批次用时: {duration_text}")
+
+sent_file.write_text(data.get("updated_at", "done"), encoding="utf-8")
+print("\n".join(lines))
 PYEOF
 )
   if [[ -n "$COMPLETE_MSG" ]]; then
@@ -285,30 +326,138 @@ fi
 
 # ── Per-task notification (with token breakdown) ───────────────────────────
 if [[ -n "$NOTIFY_TARGET" ]]; then
-  # Extract token numbers from TOKENS_JSON for the message
-  TOKEN_DISPLAY=$(python3 -c "
-import json, sys
-try:
-    t = json.loads('$TOKENS_JSON')
-    inp = t.get('input', 0)
-    out = t.get('output', 0)
-    cr  = t.get('cache_read', 0)
-    if inp or out:
-        parts = [f'in={inp:,}', f'out={out:,}']
-        if cr:
-            parts.append(f'cache_r={cr:,}')
-        print(' | tokens: ' + ', '.join(parts))
-    else:
-        print('')
-except Exception:
-    print('')
-" 2>/dev/null)
-
   STATUS_EMOJI="✅"
-  [[ "$EXIT_CODE" != "0" ]] && STATUS_EMOJI="❌"
+  STATUS_WORD="完成"
+  if [[ "$EXIT_CODE" != "0" ]]; then
+    STATUS_EMOJI="❌"
+    STATUS_WORD="失败"
+  fi
+
+  TASK_NOTIFY_MSG=""
+  if [[ -f "$TASKS_FILE" ]]; then
+    TASK_NOTIFY_MSG=$(python3 - "$TASKS_FILE" "$TASK_ID" "$EXIT_CODE" "$SESSION" <<'PYEOF'
+import json
+import sys
+from datetime import datetime
+
+tasks_file, task_id, exit_code, session = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+
+
+def parse_time(value):
+    if not value:
+        return None
+    try:
+        if value.endswith("Z"):
+            value = value[:-1] + "+00:00"
+        return datetime.fromisoformat(value)
+    except Exception:
+        return None
+
+
+def format_k(value):
+    value = int(value or 0)
+    if value < 1000:
+        return str(value)
+    if value < 100000:
+        short = f"{value / 1000:.1f}k"
+        return short.replace(".0k", "k")
+    return f"{int(round(value / 1000.0))}k"
+
+
+def format_duration(seconds):
+    if seconds is None or seconds < 0:
+        return ""
+    seconds = int(round(seconds))
+    minutes, secs = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"{hours}h {minutes}m {secs:02d}s"
+    if minutes:
+        return f"{minutes}m {secs:02d}s"
+    return f"{secs}s"
+
+
+try:
+    with open(tasks_file) as f:
+        data = json.load(f)
+except Exception:
+    print("")
+    raise SystemExit(0)
+
+tasks = data.get("tasks", [])
+task = next((item for item in tasks if item.get("id") == task_id), None)
+if not task:
+    print("")
+    raise SystemExit(0)
+
+project = data.get("project") or "swarm"
+status_emoji = "✅" if exit_code == 0 else "❌"
+status_word = "完成" if exit_code == 0 else "失败"
+lines = [f"{status_emoji} {task_id} {status_word} — {project}"]
+
+name = (task.get("name") or "").strip()
+if name:
+    lines.append(f"📝 {name}")
+
+tokens = task.get("tokens", {}) or {}
+input_tokens = int(tokens.get("input", 0) or 0)
+output_tokens = int(tokens.get("output", 0) or 0)
+cache_read = int(tokens.get("cache_read", 0) or 0)
+
+created_at = parse_time(task.get("created_at"))
+updated_at = parse_time(task.get("updated_at"))
+duration_text = ""
+if created_at and updated_at:
+    duration_text = format_duration((updated_at - created_at).total_seconds())
+
+if input_tokens or output_tokens or cache_read:
+    token_line = f"📊 Tokens: {format_k(input_tokens)} in / {format_k(output_tokens)} out"
+    if cache_read:
+        token_line += f" (+{format_k(cache_read)} cache)"
+    if duration_text:
+        token_line += f"  ⏱️ 用时: {duration_text}"
+    lines.append(token_line)
+elif duration_text:
+    lines.append(f"⏱️ 用时: {duration_text}")
+
+if exit_code == 0:
+    next_tasks = [
+        item.get("id")
+        for item in tasks
+        if task_id in (item.get("depends_on") or []) and item.get("id")
+    ]
+    if next_tasks:
+        lines.append(f"⬇️ 下一步：{'、'.join(next_tasks)} 条件满足后将解锁")
+else:
+    attempts = task.get("attempts")
+    max_attempts = task.get("max_attempts")
+    tmux_name = (task.get("tmux") or session or "").strip()
+
+    if attempts is not None and max_attempts is not None:
+        retry_text = f"attempt {attempts}/{max_attempts}"
+    elif attempts is not None:
+        retry_text = f"attempt {attempts}"
+    else:
+        retry_text = ""
+
+    if tmux_name and retry_text:
+        lines.append(f"🔄 {retry_text}，请检查 tmux capture-pane -t {tmux_name} -p")
+    elif tmux_name:
+        lines.append(f"🔄 请检查 tmux capture-pane -t {tmux_name} -p")
+    elif retry_text:
+        lines.append(f"🔄 {retry_text}")
+
+print("\n".join(lines))
+PYEOF
+)
+  fi
+
+  if [[ -z "$TASK_NOTIFY_MSG" ]]; then
+    TASK_NOTIFY_MSG="${STATUS_EMOJI} ${TASK_ID} ${STATUS_WORD}"
+  fi
 
   openclaw message send --channel telegram --target "$NOTIFY_TARGET" \
-    -m "${STATUS_EMOJI} ${TASK_ID} 完成 (exit=${EXIT_CODE}) — ${COMMIT_HASH}${TOKEN_DISPLAY}" \
+    -m "$TASK_NOTIFY_MSG" \
     --silent 2>/dev/null &
 fi
 
