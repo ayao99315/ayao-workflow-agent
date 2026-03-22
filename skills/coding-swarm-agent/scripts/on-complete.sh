@@ -33,18 +33,31 @@ fi
 
 # Write structured signal (include tokens)
 # Use python3 to build JSON — avoids broken JSONL when COMMIT_MSG contains " or \
-python3 -c "
-import json, sys
-print(json.dumps({
-  'event': 'task_done',
-  'task': '$TASK_ID',
-  'session': '$SESSION',
-  'exit': $EXIT_CODE,
-  'commit': '$COMMIT_HASH',
-  'message': sys.argv[1],
-  'tokens': json.loads(sys.argv[2]),
-  'time': $TS
-}))" "$COMMIT_MSG" "$TOKENS_JSON" >> "$SIGNAL_FILE"
+TASK_ID_ENV="$TASK_ID" \
+SESSION_ENV="$SESSION" \
+EXIT_CODE_ENV="$EXIT_CODE" \
+COMMIT_HASH_ENV="$COMMIT_HASH" \
+TS_ENV="$TS" \
+python3 - "$COMMIT_MSG" "$TOKENS_JSON" >> "$SIGNAL_FILE" <<'PYEOF'
+import json
+import os
+import sys
+
+print(
+    json.dumps(
+        {
+            "event": "task_done",
+            "task": os.environ["TASK_ID_ENV"],
+            "session": os.environ["SESSION_ENV"],
+            "exit": int(os.environ["EXIT_CODE_ENV"]),
+            "commit": os.environ["COMMIT_HASH_ENV"],
+            "message": sys.argv[1],
+            "tokens": json.loads(sys.argv[2]),
+            "time": int(os.environ["TS_ENV"]),
+        }
+    )
+)
+PYEOF
 
 # Update task status immediately so any follow-up sees fresh state.
 if [[ "$EXIT_CODE" == "0" ]]; then
@@ -70,13 +83,29 @@ if [[ -f "$HEARTBEAT_PID_FILE" ]]; then
 fi
 
 # Mark agent as idle in pool
-"$SCRIPT_DIR/update-agent-status.sh" "$SESSION" "idle" "" 2>/dev/null &
+if ! "$SCRIPT_DIR/update-agent-status.sh" "$SESSION" "idle" "" >/dev/null 2>>/tmp/update-agent-status-errors.log; then
+  :
+fi
 
 # Dynamic agent management: scale up/down based on task queue
-"$SCRIPT_DIR/agent-manager.sh" 2>/dev/null &
+"$SCRIPT_DIR/agent-manager.sh" 2>>/tmp/agent-manager-errors.log &
 
 # Read config
 NOTIFY_TARGET=$("$SCRIPT_DIR/swarm-config.sh" resolve notify.target 2>/dev/null || cat "$SWARM_DIR/notify-target" 2>/dev/null || echo "")
+
+if [[ "$STATUS_UPDATE_EC" == "2" && -n "$NOTIFY_TARGET" ]]; then
+  STATUS_ALERT_MSG=$(cat <<EOF
+⚠️ update-task-status 未找到任务
+task: $TASK_ID
+session: $SESSION
+exit: $EXIT_CODE
+
+$STATUS_UPDATE_OUTPUT
+EOF
+)
+  openclaw message send --channel telegram --target "$NOTIFY_TARGET" \
+    -m "$STATUS_ALERT_MSG" --silent 2>/dev/null || true
+fi
 
 TASK_NAME="$TASK_ID"
 if [[ -f "$TASKS_FILE" ]]; then
@@ -109,17 +138,22 @@ openclaw system event --text "Done: $TASK_ID $TASK_NAME" --mode now 2>/dev/null 
 if [[ "$EXIT_CODE" == "0" ]]; then
   PROJECT_SLUG=""
   if [[ -f "$TASKS_FILE" ]]; then
-    PROJECT_SLUG=$(python3 -c "
-import json, os
+    PROJECT_SLUG=$(
+      TASKS_FILE_ENV="$TASKS_FILE" \
+      python3 - <<'PYEOF' 2>/dev/null || echo ""
+import json
+import os
+
 try:
-    with open('$TASKS_FILE') as f:
+    with open(os.environ["TASKS_FILE_ENV"], encoding="utf-8") as f:
         data = json.load(f)
-    repo = data.get('repo', '')
-    slug = data.get('project') or (os.path.basename(repo.rstrip('/')) if repo else '')
+    repo = data.get("repo", "")
+    slug = data.get("project") or (os.path.basename(repo.rstrip("/")) if repo else "")
     print(slug)
 except Exception:
     pass
-" 2>/dev/null || echo "")
+PYEOF
+    )
   fi
 
   if [[ -n "$PROJECT_SLUG" ]]; then

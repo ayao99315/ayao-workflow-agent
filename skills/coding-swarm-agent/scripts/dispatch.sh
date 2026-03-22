@@ -30,6 +30,7 @@ PROMPT_FILE=""
 PROMPT_TMP_FILE=""
 INJECTED_PROMPT_FILE=""
 DISPATCHED=false
+MARKED_RUNNING=false
 cleanup_prompt_tmp() {
   if [[ "$DISPATCHED" != "true" ]] && [[ -n "${PROMPT_TMP_FILE:-}" ]] && [[ -f "$PROMPT_TMP_FILE" ]]; then
     rm -f "$PROMPT_TMP_FILE"
@@ -38,11 +39,27 @@ cleanup_prompt_tmp() {
     rm -f "$INJECTED_PROMPT_FILE"
   fi
 }
-trap cleanup_prompt_tmp EXIT
+cleanup_dispatch() {
+  local ec=$?
+  if [[ "$MARKED_RUNNING" == "true" ]] && [[ "$DISPATCHED" != "true" ]]; then
+    "$UPDATE_STATUS" "$TASK_ID" "failed" "" "" "$SESSION" >/dev/null 2>&1 || true
+  fi
+  cleanup_prompt_tmp
+  return "$ec"
+}
+trap cleanup_dispatch EXIT
 if [[ "${1:-}" == "--prompt-file" ]]; then
   PROMPT_FILE="${2:?--prompt-file requires a path}"
   shift 2
 fi
+
+if [[ ! "$TASK_ID" =~ ^[A-Za-z0-9._-]+$ ]]; then
+  echo "dispatch.sh: TASK_ID must match ^[A-Za-z0-9._-]+$: $TASK_ID" >&2
+  exit 1
+fi
+
+TASK_SLUG="$TASK_ID"
+SESSION_SLUG="$(printf '%s' "$SESSION" | tr -c 'A-Za-z0-9._-' '_')"
 
 make_temp_file() {
   local prefix="$1"
@@ -94,22 +111,26 @@ fi
 if [[ "$SESSION" == "cc-plan" ]] && [[ -n "$PROMPT_FILE" ]]; then
   _PROMPT_CMD_BIN="$(basename "${COMMAND_ARGS[0]}" 2>/dev/null || true)"
   if [[ "$_PROMPT_CMD_BIN" == "claude" ]]; then
-    PROJECT_SLUG=$(python3 -c "
-import json, os
+    PROJECT_SLUG=$(
+      python3 - <<'PYEOF' 2>/dev/null || echo ""
+import json
+import os
+
 try:
-    tasks_file = os.path.expanduser('~/.openclaw/workspace/swarm/active-tasks.json')
-    with open(tasks_file) as f:
+    tasks_file = os.path.expanduser("~/.openclaw/workspace/swarm/active-tasks.json")
+    with open(tasks_file, encoding="utf-8") as f:
         data = json.load(f)
-    repo = data.get('repo', '')
-    slug = data.get('project') or (os.path.basename(repo.rstrip('/')) if repo else '')
+    repo = data.get("repo", "")
+    slug = data.get("project") or (os.path.basename(repo.rstrip("/")) if repo else "")
     print(slug)
 except Exception:
     pass
-" 2>/dev/null || echo "")
+PYEOF
+    )
 
     CONTEXT_FILE="$SKILL_DIR/projects/$PROJECT_SLUG/context.md"
     if [[ -n "$PROJECT_SLUG" ]] && [[ -f "$CONTEXT_FILE" ]]; then
-      INJECTED_PROMPT_FILE="$(make_temp_file "cc-plan-injected-${TASK_ID}")"
+      INJECTED_PROMPT_FILE="$(make_temp_file "cc-plan-injected-${TASK_SLUG}")"
       {
         echo "## 项目背景（自动注入）"
         echo ""
@@ -124,11 +145,8 @@ except Exception:
   fi
 fi
 
-COMMAND_LITERAL="$(printf ' %q' "${COMMAND_ARGS[@]}")"
-COMMAND_LITERAL="${COMMAND_LITERAL# }"
-
 if [[ -n "$PROMPT_FILE" ]]; then
-  PROMPT_TMP_FILE="$(make_temp_file "agent-swarm-prompt-${TASK_ID}-${SESSION}")"
+  PROMPT_TMP_FILE="$(make_temp_file "agent-swarm-prompt-${TASK_SLUG}-${SESSION_SLUG}")"
   cat "$PROMPT_FILE" > "$PROMPT_TMP_FILE"
   if [[ -n "$INJECTED_PROMPT_FILE" ]] && [[ -f "$INJECTED_PROMPT_FILE" ]]; then
     rm -f "$INJECTED_PROMPT_FILE"
@@ -141,27 +159,16 @@ UPDATE_STATUS="$SCRIPT_DIR/update-task-status.sh"
 VERBOSE_DISPATCH=$("$SCRIPT_DIR/swarm-config.sh" get notify.verbose_dispatch 2>/dev/null || echo "")
 
 # Log file — human-readable agent output captured by tee
-LOG_FILE="/tmp/agent-swarm-${TASK_ID}-${SESSION}.log"
+LOG_FILE="/tmp/agent-swarm-${TASK_SLUG}-${SESSION_SLUG}.log"
 # JSON sidecar — raw JSON from `claude --output-format json`, used for token parsing
-CC_JSON_FILE="/tmp/agent-swarm-${TASK_ID}-${SESSION}-cc.json"
+CC_JSON_FILE="/tmp/agent-swarm-${TASK_SLUG}-${SESSION_SLUG}-cc.json"
 # Temp bash script executed in the tmux pane
-SCRIPT_FILE="$(make_temp_file "agent-swarm-run-${TASK_ID}-${SESSION}")"
+SCRIPT_FILE="$(make_temp_file "agent-swarm-run-${TASK_SLUG}-${SESSION_SLUG}")"
 
-# ── Mark task as running ─────────────────────────────────────────────────────
-# Use if-then-else to capture exit code without triggering set -e on non-zero return.
-# update-task-status.sh exits 2 when task is already claimed by another agent.
-if "$UPDATE_STATUS" "$TASK_ID" "running" "" "" "$SESSION" 2>&1; then
-  CLAIM_EC=0
-else
-  CLAIM_EC=$?
+if ! tmux has-session -t "$SESSION" 2>/dev/null; then
+  echo "❌ tmux session '$SESSION' does not exist" >&2
+  exit 1
 fi
-if [[ "$CLAIM_EC" == "2" ]]; then
-  echo "⚠️  $TASK_ID already claimed by another agent — skipping dispatch" >&2
-  exit 0
-fi
-
-# Mark agent as busy in pool
-"$SCRIPT_DIR/update-agent-status.sh" "$SESSION" "busy" "$TASK_ID" 2>/dev/null || true
 
 # ── Detect command mode ──────────────────────────────────────────────────────
 _CMD_BIN="$(basename "${COMMAND_ARGS[0]}" 2>/dev/null || true)"
@@ -185,28 +192,21 @@ if [[ -n "$PROMPT_TMP_FILE" ]]; then
 fi
 
 # ── Build agent runner script ────────────────────────────────────────────────
-# Written to SCRIPT_FILE and executed as `bash SCRIPT_FILE` in the tmux pane.
-# Variables expand at generation time (dispatch.sh context); runtime shell vars
-# are escaped with \$ so they expand later inside the generated bash script.
-
-if [[ "$_CC_JSON_MODE" == "true" ]]; then
-  # Claude Code --output-format json mode:
-  #   stdout  → python3 saves full JSON to CC_JSON_FILE, prints only .result → tee LOG_FILE
-  #   stderr  → goes to /dev/stderr (NOT merged into JSON stream — avoids json.loads breakage)
-  #   parse-tokens.sh receives CC_JSON_FILE (has full usage stats)
-  cat > "$SCRIPT_FILE" << SCRIPT
+# The runner script is static; dispatch-specific values are injected via env.
+cat > "$SCRIPT_FILE" <<'SCRIPT'
 #!/bin/bash
 set -uo pipefail
 
-LOG_FILE="${LOG_FILE}"
-CC_JSON_FILE="${CC_JSON_FILE}"
-ON_COMPLETE="${ON_COMPLETE}"
-TASK_ID="${TASK_ID}"
-SESSION="${SESSION}"
-WORKDIR="\$(pwd)"
-PROMPT_TMP_FILE="${PROMPT_TMP_FILE}"
-PROMPT_MODE="${PROMPT_MODE}"
-COMMAND=( ${COMMAND_LITERAL} )
+LOG_FILE="${AGENT_SWARM_LOG_FILE:?}"
+CC_JSON_FILE="${AGENT_SWARM_CC_JSON_FILE:-}"
+ON_COMPLETE="${AGENT_SWARM_ON_COMPLETE:?}"
+TASK_ID="${AGENT_SWARM_TASK_ID:?}"
+SESSION="${AGENT_SWARM_SESSION:?}"
+PROMPT_TMP_FILE="${AGENT_SWARM_PROMPT_TMP_FILE:-}"
+PROMPT_MODE="${AGENT_SWARM_PROMPT_MODE:-none}"
+CC_JSON_MODE="${AGENT_SWARM_CC_JSON_MODE:-false}"
+WORKDIR="$(pwd)"
+COMMAND=( "$@" )
 
 cleanup() {
   if [[ -n "\${PROMPT_TMP_FILE}" ]] && [[ -f "\${PROMPT_TMP_FILE}" ]]; then
@@ -226,20 +226,36 @@ run_agent() {
   esac
 }
 
-# Run agent: stdout only → python intercept → tee to LOG_FILE
-# stderr is NOT merged (2>&1 omitted) so CC's JSON stdout stays clean
-run_agent 2>/dev/null | python3 -c "
-import sys, json
+if [[ "${#COMMAND[@]}" -eq 0 ]]; then
+  echo "dispatch runner: missing command" >&2
+  exit 1
+fi
+
+if [[ "$CC_JSON_MODE" == "true" ]]; then
+  # stdout only → python intercept → tee to LOG_FILE
+  # stderr is not merged so Claude JSON stdout stays parseable
+  run_agent 2>/dev/null | python3 -c '
+import json
+import sys
+
 sidecar = sys.argv[1]
 raw = sys.stdin.read()
-open(sidecar, 'w').write(raw)
+with open(sidecar, "w", encoding="utf-8") as f:
+    f.write(raw)
 try:
     obj = json.loads(raw)
-    print(obj.get('result') or raw)
+    print(obj.get("result") or raw)
 except Exception:
     sys.stdout.write(raw)
-" "\${CC_JSON_FILE}" | tee "\${LOG_FILE}"
-EC=\${PIPESTATUS[0]}
+' "$CC_JSON_FILE" | tee "$LOG_FILE"
+  EC=${PIPESTATUS[0]}
+  COMPLETE_LOG="$CC_JSON_FILE"
+else
+  # Standard mode: stdout + stderr piped through tee to LOG_FILE
+  run_agent 2>&1 | tee "$LOG_FILE"
+  EC=${PIPESTATUS[0]}
+  COMPLETE_LOG="$LOG_FILE"
+fi
 
 # Force-commit any uncommitted changes (catches agents that forget)
 # Use git add with pathspec to exclude workspace swarm/ files (active-tasks.json etc.)
@@ -248,79 +264,57 @@ if [ -n "\$(git -C "\${WORKDIR}" status --porcelain 2>/dev/null)" ]; then
   git -C "\${WORKDIR}" add -- . ':!../../swarm/' ':!../../reports/' ':!../../memory/' \
     2>/dev/null || git -C "\${WORKDIR}" add -A
   if [ -n "\$(git -C "\${WORKDIR}" diff --cached --name-only 2>/dev/null)" ]; then
-    git -C "\${WORKDIR}" commit -m "feat: ${TASK_ID} auto-commit (agent forgot)" \
+    git -C "\${WORKDIR}" commit -m "feat: \${TASK_ID} auto-commit (agent forgot)" \
       && git -C "\${WORKDIR}" push \
       || FC_EC=\$?
   fi
 fi
 [ "\${FC_EC}" -ne 0 ] && EC="\${FC_EC}"
 
-"\${ON_COMPLETE}" "${TASK_ID}" "${SESSION}" "\${EC}" "\${CC_JSON_FILE}"
+"\${ON_COMPLETE}" "\${TASK_ID}" "\${SESSION}" "\${EC}" "\${COMPLETE_LOG}"
+
 SCRIPT
-
-else
-  # Standard mode (Codex or CC without --output-format json):
-  #   stdout + stderr piped through tee to LOG_FILE
-  #   parse-tokens.sh receives LOG_FILE (scans for token patterns)
-  cat > "$SCRIPT_FILE" << SCRIPT
-#!/bin/bash
-set -uo pipefail
-
-LOG_FILE="${LOG_FILE}"
-ON_COMPLETE="${ON_COMPLETE}"
-TASK_ID="${TASK_ID}"
-SESSION="${SESSION}"
-WORKDIR="\$(pwd)"
-PROMPT_TMP_FILE="${PROMPT_TMP_FILE}"
-PROMPT_MODE="${PROMPT_MODE}"
-COMMAND=( ${COMMAND_LITERAL} )
-
-cleanup() {
-  if [[ -n "\${PROMPT_TMP_FILE}" ]] && [[ -f "\${PROMPT_TMP_FILE}" ]]; then
-    rm -f "\${PROMPT_TMP_FILE}"
-  fi
-}
-trap cleanup EXIT
-
-run_agent() {
-  case "\${PROMPT_MODE}" in
-    stdin)
-      cat "\${PROMPT_TMP_FILE}" | "\${COMMAND[@]}"
-      ;;
-    *)
-      "\${COMMAND[@]}"
-      ;;
-  esac
-}
-
-# Run agent, tee output to log
-run_agent 2>&1 | tee "\${LOG_FILE}"
-EC=\${PIPESTATUS[0]}
-
-# Force-commit any uncommitted changes (catches agents that forget)
-# Use pathspec to exclude workspace swarm/ files (active-tasks.json etc.)
-FC_EC=0
-if [ -n "\$(git -C "\${WORKDIR}" status --porcelain 2>/dev/null)" ]; then
-  git -C "\${WORKDIR}" add -- . ':!../../swarm/' ':!../../reports/' ':!../../memory/' \
-    2>/dev/null || git -C "\${WORKDIR}" add -A
-  if [ -n "\$(git -C "\${WORKDIR}" diff --cached --name-only 2>/dev/null)" ]; then
-    git -C "\${WORKDIR}" commit -m "feat: ${TASK_ID} auto-commit (agent forgot)" \
-      && git -C "\${WORKDIR}" push \
-      || FC_EC=\$?
-  fi
-fi
-[ "\${FC_EC}" -ne 0 ] && EC="\${FC_EC}"
-
-"\${ON_COMPLETE}" "${TASK_ID}" "${SESSION}" "\${EC}" "\${LOG_FILE}"
-SCRIPT
-
-fi
 
 chmod +x "$SCRIPT_FILE"
 
+# ── Mark task as running ─────────────────────────────────────────────────────
+# Use if-then-else to capture exit code without triggering set -e on non-zero return.
+# update-task-status.sh exits 2 when task is already claimed by another agent.
+if "$UPDATE_STATUS" "$TASK_ID" "running" "" "" "$SESSION" 2>&1; then
+  CLAIM_EC=0
+else
+  CLAIM_EC=$?
+fi
+if [[ "$CLAIM_EC" == "2" ]]; then
+  echo "⚠️  $TASK_ID already claimed by another agent — skipping dispatch" >&2
+  exit 0
+fi
+if [[ "$CLAIM_EC" != "0" ]]; then
+  exit "$CLAIM_EC"
+fi
+MARKED_RUNNING=true
+
+# Mark agent as busy in pool
+"$SCRIPT_DIR/update-agent-status.sh" "$SESSION" "busy" "$TASK_ID" 2>/dev/null || true
+
 # ── Dispatch to tmux ─────────────────────────────────────────────────────────
 # tmux pane only sees `bash /tmp/script.sh` — no quoting issues, no shell compat issues
-WRAPPED="bash ${SCRIPT_FILE}"
+WRAPPED_ARGS=(
+  env
+  "AGENT_SWARM_LOG_FILE=$LOG_FILE"
+  "AGENT_SWARM_CC_JSON_FILE=$CC_JSON_FILE"
+  "AGENT_SWARM_ON_COMPLETE=$ON_COMPLETE"
+  "AGENT_SWARM_TASK_ID=$TASK_ID"
+  "AGENT_SWARM_SESSION=$SESSION"
+  "AGENT_SWARM_PROMPT_TMP_FILE=$PROMPT_TMP_FILE"
+  "AGENT_SWARM_PROMPT_MODE=$PROMPT_MODE"
+  "AGENT_SWARM_CC_JSON_MODE=$_CC_JSON_MODE"
+  bash
+  "$SCRIPT_FILE"
+  "${COMMAND_ARGS[@]}"
+)
+printf -v WRAPPED '%q ' "${WRAPPED_ARGS[@]}"
+WRAPPED="${WRAPPED% }"
 
 tmux send-keys -t "$SESSION" -l -- "$WRAPPED"
 tmux send-keys -t "$SESSION" Enter

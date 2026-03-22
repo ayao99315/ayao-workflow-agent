@@ -48,17 +48,26 @@ trap cleanup_lock EXIT
 flock -x 200
 
 set +e
-python3 -c "
-import json, sys
+TASK_ID_ENV="$TASK_ID" \
+NEW_STATUS_ENV="$NEW_STATUS" \
+COMMIT_HASH_ENV="$COMMIT_HASH" \
+TOKENS_JSON_ENV="$TOKENS_JSON" \
+TMUX_SESSION_ENV="$TMUX_SESSION" \
+TASKS_FILE_ENV="$TASKS_FILE" \
+python3 - <<'PYEOF'
+import json
+import os
+import sys
 from datetime import datetime, timezone
 
-task_id = '$TASK_ID'
-new_status = '$NEW_STATUS'
-commit_hash = '$COMMIT_HASH'
-tokens_raw = '''$TOKENS_JSON'''
-tmux_session = '$TMUX_SESSION'
+task_id = os.environ["TASK_ID_ENV"]
+new_status = os.environ["NEW_STATUS_ENV"]
+commit_hash = os.environ["COMMIT_HASH_ENV"]
+tokens_raw = os.environ.get("TOKENS_JSON_ENV", "")
+tmux_session = os.environ.get("TMUX_SESSION_ENV", "")
+tasks_file = os.environ["TASKS_FILE_ENV"]
 
-with open('$TASKS_FILE', 'r') as f:
+with open(tasks_file, "r", encoding="utf-8") as f:
     data = json.load(f)
 
 now = datetime.now(timezone.utc).isoformat()
@@ -72,70 +81,82 @@ if tokens_raw.strip():
     except Exception:
         pass
 
-for t in data.get('tasks', []):
-    if t['id'] == task_id:
-        current_status = t.get('status', '')
+for task in data.get("tasks", []):
+    if task["id"] == task_id:
+        current_status = task.get("status", "")
 
-        if new_status == 'running':
-            if current_status == 'running':
-                t['updated_at'] = now
+        if new_status == "running":
+            if current_status == "running":
+                task["updated_at"] = now
                 if tmux_session:
-                    t['tmux'] = tmux_session
+                    task["tmux"] = tmux_session
                 updated = True
                 break
-            elif current_status not in ('pending', 'failed', 'retrying'):
-                print(f'SKIP: {task_id} already {current_status} (race-condition guard)', file=sys.stderr)
+            if current_status not in ("pending", "failed", "retrying"):
+                print(
+                    f"SKIP: {task_id} already {current_status} (race-condition guard)",
+                    file=sys.stderr,
+                )
                 sys.exit(2)
 
-        t['status'] = new_status
-        t['updated_at'] = now
-        if new_status == 'running' and tmux_session:
-            t['tmux'] = tmux_session
-        if commit_hash and commit_hash != 'none':
-            if 'commits' not in t:
-                t['commits'] = []
-            if commit_hash not in t['commits']:
-                t['commits'].append(commit_hash)
-        # Persist token usage — accumulate across attempts
+        task["status"] = new_status
+        task["updated_at"] = now
+        if new_status == "running" and tmux_session:
+            task["tmux"] = tmux_session
+        if commit_hash and commit_hash != "none":
+            commits = task.setdefault("commits", [])
+            if commit_hash not in commits:
+                commits.append(commit_hash)
         if tokens:
-            prev = t.get('tokens', {'input': 0, 'output': 0, 'cache_read': 0, 'cache_write': 0})
-            t['tokens'] = {
-                'input':       prev.get('input', 0)       + tokens.get('input', 0),
-                'output':      prev.get('output', 0)      + tokens.get('output', 0),
-                'cache_read':  prev.get('cache_read', 0)  + tokens.get('cache_read', 0),
-                'cache_write': prev.get('cache_write', 0) + tokens.get('cache_write', 0),
+            prev = task.get(
+                "tokens",
+                {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0},
+            )
+            task["tokens"] = {
+                "input": prev.get("input", 0) + tokens.get("input", 0),
+                "output": prev.get("output", 0) + tokens.get("output", 0),
+                "cache_read": prev.get("cache_read", 0) + tokens.get("cache_read", 0),
+                "cache_write": prev.get("cache_write", 0) + tokens.get("cache_write", 0),
             }
         updated = True
         break
 
 if not updated:
-    print(f'WARN: task {task_id} not found in active-tasks.json', file=sys.stderr)
-    sys.exit(0)
+    print(f"WARN: task {task_id} not found in {tasks_file}", file=sys.stderr)
+    sys.exit(2)
 
-# Auto-unblock: if new_status is 'done', scan blocked tasks
-if new_status == 'done':
-    done_ids = {t['id'] for t in data['tasks'] if t['status'] == 'done'}
+if new_status == "done":
+    done_ids = {task["id"] for task in data["tasks"] if task["status"] == "done"}
     unblocked = []
-    for t in data['tasks']:
-        if t['status'] == 'blocked':
-            deps = set(t.get('depends_on', []))
+    for task in data["tasks"]:
+        if task["status"] == "blocked":
+            deps = set(task.get("depends_on", []))
             if deps and deps.issubset(done_ids):
-                t['status'] = 'pending'
-                t['updated_at'] = now
-                unblocked.append(t['id'])
+                task["status"] = "pending"
+                task["updated_at"] = now
+                unblocked.append(task["id"])
     if unblocked:
-        print(f'Unblocked: {unblocked}')
+        print(f"Unblocked: {unblocked}")
 
-data['updated_at'] = now
+data["updated_at"] = now
 
-with open('$TASKS_FILE', 'w') as f:
+tmp = tasks_file + ".tmp"
+with open(tmp, "w", encoding="utf-8") as f:
     json.dump(data, f, indent=2, ensure_ascii=False)
+    f.flush()
+    os.fsync(f.fileno())
+os.replace(tmp, tasks_file)
 
-token_str = ''
+token_str = ""
 if tokens:
-    token_str = f' | tokens: in={tokens.get(\"input\",0)} out={tokens.get(\"output\",0)} cache_r={tokens.get(\"cache_read\",0)} cache_w={tokens.get(\"cache_write\",0)}'
-print(f'{task_id} -> {new_status}' + (f' (commit: {commit_hash})' if commit_hash else '') + token_str)
-"
+    token_str = (
+        f" | tokens: in={tokens.get('input', 0)}"
+        f" out={tokens.get('output', 0)}"
+        f" cache_r={tokens.get('cache_read', 0)}"
+        f" cache_w={tokens.get('cache_write', 0)}"
+    )
+print(f"{task_id} -> {new_status}" + (f" (commit: {commit_hash})" if commit_hash else "") + token_str)
+PYEOF
 UTS_EC=$?
 set -e
 
