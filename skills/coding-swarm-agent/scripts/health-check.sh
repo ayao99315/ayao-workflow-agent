@@ -197,16 +197,18 @@ for t in tasks:
 
   # Check if stuck (no status update for > STUCK_MINUTES)
   if [[ -n "$UPDATED_AT" ]]; then
-    # Parse ISO8601 to epoch
-    UPDATED_TS=$(python3 -c "
+    # Parse ISO8601 to epoch — pass via env var to avoid code injection
+    UPDATED_TS=$(UPDATED_AT_VAL="$UPDATED_AT" python3 - <<'PY' 2>/dev/null || echo 0
+import os
 from datetime import datetime
-import sys
 try:
-    dt = datetime.fromisoformat('$UPDATED_AT'.replace('Z','+00:00'))
+    val = os.environ['UPDATED_AT_VAL']
+    dt = datetime.fromisoformat(val.replace('Z', '+00:00'))
     print(int(dt.timestamp()))
-except:
+except Exception:
     print(0)
-" 2>/dev/null || echo 0)
+PY
+)
 
     ELAPSED=$(( NOW_TS - UPDATED_TS ))
     STUCK_SECS=$(( STUCK_MINUTES * 60 ))
