@@ -1,0 +1,21 @@
+{
+  "agent": "main",
+  "updated_at": "2026-03-22T02:07:07+08:00",
+  "date": "2026-03-22",
+  "summary": "今日完成 swarm prompt 模板增强、on-complete.sh 通知升级，并新增发版前 review dashboard。",
+  "tasks_done": [
+    "PROMPTS-T001: 为 prompt-codex / prompt-cc-frontend / prompt-cc-review 模板加入认知模式与 Completeness Principle，commit 51bf329",
+    "NOTIFY-T003: 升级 scripts/on-complete.sh 的 Telegram 完成/失败/swarm 汇总通知格式，加入任务名、tokens、用时、下一步和失败排查提示，commit 00aba42",
+    "DASHBOARD-T005: 新增 scripts/review-dashboard.sh，并在 SKILL.md 的 deploy 流程前加入 review readiness 检查，commit 740b4ed"
+  ],
+  "tasks_pending": [],
+  "current_project": "coding-swarm-agent",
+  "tokens": {
+    "codex_input": 0,
+    "codex_output": 0,
+    "cc_input": 0,
+    "cc_output": 0
+  },
+  "blockers": null,
+  "notes": "review dashboard 严格按 full/scan/skip 分级判断，full 仅在已完成 review 任务的 name 精确包含对应 task_id 时视为通过；脚本默认读取 ~/.openclaw/workspace/swarm/active-tasks.json。"
+}

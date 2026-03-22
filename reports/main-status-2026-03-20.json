@@ -1,24 +1,31 @@
 {
   "agent": "main",
-  "updated_at": "2026-03-20T15:12:00+08:00",
+  "updated_at": "2026-03-20T22:45:00+08:00",
   "date": "2026-03-20",
-  "summary": "coding-swarm-agent 全天大改：批次生命周期管理、Plan三层规范、ARCH-REVIEW H1-H5全部修复，发布v1.3.0",
+  "summary": "coding-swarm-agent 全天深度修复与发布：dispatch.sh 链路修复、批次生命周期管理、Plan 三层规范落地、架构 Review H1-H5 全部修复，发布 v1.3.0 到 ClawHub。",
   "tasks_done": [
-    "SWARM-T005/T006/REVIEW3: dispatch.sh/on-complete.sh 修复，链路简化",
-    "SWARM-ARCH-T001~T003+REVIEW: swarm-new-batch.sh + 批次生命周期架构",
-    "PLAN-T001~T005+REVIEW: Plan三层规范(需求/设计/计划) + docs目录结构",
-    "FIX-H1H2H3: flock race guard + tmux字段写入 + heartbeat刷新",
-    "FIX-H4: force-commit git add -A → git add -u 安全修复",
-    "FIX-H5: SKILL.md 删旧webhook描述，改为openclaw system event说明"
+    "SWARM-T005: dispatch.sh 调用兼容性修复（单字符串/argv 兼容 + --prompt-file 改 stdin + mktemp 修复）",
+    "SWARM-ARCH: 批次生命周期管理落地（swarm-new-batch.sh 新增、on-complete.sh 简化、history/ 目录结构建立）",
+    "DOC: playbook.md 更新至 v2.6，两个 repo 全部推送",
+    "PLAN: Plan 三层规范落地（Documentation Rules 章节、prompt-cc-plan.md、requirements 模板、docs/swarm/ 目录）",
+    "FIX-T001: dispatch.sh macOS mktemp XXXXXX 不替换问题修复（python3 tempfile 方式）",
+    "FIX-T002: dispatch.sh 单字符串/argv 两种调用方式统一兼容",
+    "FIX-T003: on-complete.sh swarm-complete 判断逻辑验证",
+    "FIX-H1: update-task-status.sh flock race guard 修复（exec fd 方式，去子 shell）",
+    "FIX-H2: dispatch.sh mark running 写入 task.tmux 字段",
+    "FIX-H3: heartbeat 改为刷新 active-tasks.json task.updated_at",
+    "FIX-H4: dispatch.sh force-commit 改 git add -u，避免敏感文件泄漏",
+    "FIX-H5: SKILL.md 删除旧 webhook 描述，改为 openclaw system event 说明",
+    "RELEASE: coding-swarm-agent@1.3.0 发布到 ClawHub"
   ],
   "tasks_pending": [],
   "current_project": "coding-swarm-agent",
   "tokens": {
-    "codex_input": 0,
-    "codex_output": 0,
-    "cc_input": 0,
-    "cc_output": 0
+    "codex_input": 109955,
+    "codex_output": 9631,
+    "cc_input": 34,
+    "cc_output": 6499
   },
   "blockers": null,
-  "notes": "coding-swarm-agent@1.3.0 已发布ClawHub。早上FIX-T001的git commit卡住问题已在后续批次中解决，不再是blocker。所有任务全部done，repo干净。"
+  "notes": "当前批次（2026-03-20-coding-swarm-agent-3）所有任务全部 done。今日累计完成 3 个批次，coding-swarm-agent 从 v1.1.x 演进到 v1.3.0，核心链路修复完毕，架构 review 发现的 5 个 High 问题全部关闭。"
 }

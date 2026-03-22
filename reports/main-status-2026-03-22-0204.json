@@ -1,0 +1,20 @@
+{
+  "agent": "main",
+  "updated_at": "2026-03-22T02:04:26+08:00",
+  "date": "2026-03-22",
+  "summary": "今日完成 swarm prompt 模板增强，并升级 on-complete.sh Telegram 通知为 20 分钟假设格式。",
+  "tasks_done": [
+    "PROMPTS-T001: 为 prompt-codex / prompt-cc-frontend / prompt-cc-review 模板加入认知模式与 Completeness Principle，commit 51bf329",
+    "NOTIFY-T003: 升级 scripts/on-complete.sh 的 Telegram 完成/失败/swarm 汇总通知格式，加入任务名、tokens、用时、下一步和失败排查提示"
+  ],
+  "tasks_pending": [],
+  "current_project": "coding-swarm-agent",
+  "tokens": {
+    "codex_input": 0,
+    "codex_output": 0,
+    "cc_input": 0,
+    "cc_output": 0
+  },
+  "blockers": null,
+  "notes": "通知升级保持了 token 里程碑告警与 active-tasks 读取失败时的简短回退；功能提交将单独落在 on-complete.sh。"
+}

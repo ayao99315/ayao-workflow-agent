@@ -277,6 +277,7 @@ For each ready task (status=pending, dependencies met):
   - Preserve the four cognitive checks in the prompt: `DRY Check`, `Boring by Default`, `Blast Radius Check`, `Two-Week Smell Test`
   - State the `Completeness Principle` explicitly when scope includes paired docs/files, so the agent finishes every in-scope artifact before stopping
   - Keep `## Contributor Mode（任务完成后填写）` at the end of the prompt and require the agent to include the field report in the commit message body: what was done, issues hit, and what was intentionally left out
+- For `cc-plan` tasks: if a project memory file exists at `projects/<slug>/context.md`, dispatch.sh automatically injects it into the prompt so the planning agent has project-specific background context.
 - Dispatch using the wrapper script (auto: marks running + attaches completion callback + force-commits if agent forgets):
   ```bash
   scripts/dispatch.sh <session> <task_id> --prompt-file /tmp/task-prompt.txt <agent> <arg1> <arg2> ...
@@ -401,7 +402,7 @@ Every time an agent is dispatched (via dispatch.sh or coding-agent), report a **
 
 ### Verbose Mode (default: ON)
 
-Check `~/.openclaw/workspace/swarm/config.json` → `"verbose_dispatch": true/false` (defaults to `true` if missing).
+Read via the config system: `swarm-config.sh resolve notify.verbose_dispatch` (falls back to `true` if unset). dispatch.sh uses this to choose compact vs verbose format automatically.
 
 **Verbose Card (verbose_dispatch = true):**
 ```
@@ -440,11 +441,13 @@ Check `~/.openclaw/workspace/swarm/config.json` → `"verbose_dispatch": true/fa
 ### 切换开关
 
 ```bash
+SKILL_DIR=~/.openclaw/workspace/skills/coding-swarm-agent
+
 # 开启详细模式（默认）
-echo '{"verbose_dispatch": true}' > ~/.openclaw/workspace/swarm/config.json
+$SKILL_DIR/scripts/swarm-config.sh set notify.verbose_dispatch true
 
 # 关闭（精简模式）
-echo '{"verbose_dispatch": false}' > ~/.openclaw/workspace/swarm/config.json
+$SKILL_DIR/scripts/swarm-config.sh set notify.verbose_dispatch false
 ```
 
 也可以直接告诉我「开启/关闭 dispatch 详情」，我来更新配置。
@@ -561,15 +564,33 @@ tmux send-keys -t <session> Enter
 - **Batch:** all tasks complete, milestone progress
 - **Silent:** routine retries, answering agent questions, minor fixes
 
+## 项目记忆库
+
+每个 swarm 项目可以有独立的记忆目录 `projects/<slug>/`，包含：
+
+```
+projects/
+  <slug>/
+    context.md      ← 项目背景（手动维护），cc-plan 任务自动注入
+    retro.jsonl     ← 任务回顾记录（on-complete.sh 自动 append）
+```
+
+- **context.md**：记录项目的技术栈、关键决策、已知坑等背景信息。dispatch.sh 在派发 cc-plan 任务时会自动注入该文件内容，让规划 agent 拥有项目上下文。需人工维护，建议每个大批次结束后更新。
+- **retro.jsonl**：每条记录对应一个完成的任务，格式为 JSON Lines。on-complete.sh 在任务完成时自动 append，包含 task_id、status、elapsed、tokens、commit hash、field report 摘要等字段。用于复盘和趋势分析。
+
 ## References
 
 - `references/prompt-codex.md` — Codex backend coding prompt template
 - `references/prompt-cc-plan.md` — CC planning prompt template
 - `references/prompt-cc-frontend.md` — CC frontend coding prompt template
 - `references/prompt-cc-review.md` — CC/Codex review prompt template
+- `references/prompt-cc-writing.md` — Non-code writing tasks (docs, emails, analysis reports, etc.)
+- `references/prompt-cc-analysis.md` — Code/data analysis tasks
 - `references/task-schema.md` — active-tasks.json schema and status definitions
-- `scripts/dispatch.sh` — Dispatch wrapper: mark running + mark agent busy + tee output + force-commit + on-complete callback
-- `scripts/on-complete.sh` — Completion callback: parse tokens + update status + mark agent idle + agent-manager + webhook + milestone alert + upgraded "20 分钟前通知" style notify
+- `scripts/swarm-config.sh` — Unified config reader/writer for `swarm/config.json`. Commands: `get <dot.path>`, `set <dot.path> <value>`, `resolve <dot.path>` (expands `${ENV_VAR}` templates), `project get <dot.path>`
+- `scripts/generate-image.sh` — Generic image generation interface. Backends: `nano-banana` (Gemini), `openai` (DALL-E 3), `stub` (testing). Configured via `swarm/config.json` `image_generation.*`
+- `scripts/dispatch.sh` — Dispatch wrapper: mark running + mark agent busy + tee output + force-commit + on-complete callback. Reads `notify.verbose_dispatch` via swarm-config.sh; auto-injects `projects/<slug>/context.md` for cc-plan tasks
+- `scripts/on-complete.sh` — Completion callback: parse tokens + update status + mark agent idle + agent-manager + webhook + milestone alert + upgraded "20 分钟前通知" style notify. Reads `notify.target` via `swarm-config.sh resolve` (fallback: legacy notify-target file). Includes first 300 chars of commit body as Field Report in Telegram notification. Auto-appends retro record to `projects/<slug>/retro.jsonl`
 - `scripts/update-task-status.sh` — Atomically update task status in active-tasks.json (status + tokens + auto-unblock)
 - `scripts/update-agent-status.sh` — Update a single agent's status in agent-pool.json (idle/busy/dead)
 - `scripts/parse-tokens.sh` — Parse token usage from agent output log (Claude Code + Codex formats)

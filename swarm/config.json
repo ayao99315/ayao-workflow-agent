@@ -1,1 +1,45 @@
-{"verbose_dispatch": true}
+{
+  "notify": {
+    "target": "8449051145",
+    "verbose_dispatch": true
+  },
+  "models": {
+    "cc-plan": "claude-opus-4-6",
+    "cc-review": "claude-sonnet-4-6",
+    "cc-frontend": "claude-sonnet-4-6",
+    "codex": "gpt-5.4"
+  },
+  "reasoning_effort": {
+    "default": "high",
+    "retry": "extra-high",
+    "simple": "medium"
+  },
+  "domain_routing": {
+    "backend": "codex-1",
+    "frontend": "cc-frontend",
+    "docs": "cc-plan",
+    "writing": "cc-plan",
+    "analysis": "cc-plan",
+    "design": "cc-plan",
+    "test": "codex-test",
+    "deploy": "codex-deploy"
+  },
+  "capabilities": {
+    "image_generation": true,
+    "browser_qa": false,
+    "prompt_validate": true
+  },
+  "image_generation": {
+    "default_backend": "nano-banana",
+    "output_dir": "docs/images",
+    "backends": {
+      "nano-banana": {
+        "api_key": "${GEMINI_API_KEY}"
+      },
+      "openai": {
+        "api_key": "${OPENAI_API_KEY}",
+        "model": "dall-e-3"
+      }
+    }
+  }
+}

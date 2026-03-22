@@ -1,0 +1,19 @@
+{
+  "agent": "main",
+  "updated_at": "2026-03-22T11:26:13+08:00",
+  "date": "2026-03-22",
+  "summary": "今日补充了 cc-writing 与 cc-analysis 两个非编程 prompt 模板，覆盖长文写作和分析报告场景。",
+  "tasks_done": [
+    "T2-PROMPTS: 新增 references/prompt-cc-writing.md 与 references/prompt-cc-analysis.md，并通过 validate-prompts 校验"
+  ],
+  "tasks_pending": [],
+  "current_project": "coding-swarm-agent",
+  "tokens": {
+    "codex_input": 0,
+    "codex_output": 0,
+    "cc_input": 0,
+    "cc_output": 0
+  },
+  "blockers": null,
+  "notes": "两份模板均复用了统一的认知模式、Completeness Principle 与 Contributor Mode；writing 模板额外包含 DIAGRAM 占位符处理规则。"
+}

@@ -1,0 +1,171 @@
+{
+  "batch_id": "2026-03-22-coding-swarm-agent",
+  "project": "coding-swarm-agent",
+  "repo": "https://github.com/ayao99315/coding-swarm-agent",
+  "created_at": "2026-03-21T17:57:56Z",
+  "updated_at": "2026-03-21T18:23:28.405184+00:00",
+  "tasks": [
+    {
+      "id": "T1-PROMPT-MODES",
+      "name": "为 codex/cc-frontend/cc-review prompt 模板加入认知模式 + Completeness Principle",
+      "domain": "backend",
+      "agent": "codex-1",
+      "status": "done",
+      "review_level": "scan",
+      "depends_on": [],
+      "created_at": "2026-03-21T17:58:10.592727Z",
+      "updated_at": "2026-03-21T18:03:02.443069+00:00",
+      "tmux": "codex-1",
+      "commits": [
+        "9711b45"
+      ],
+      "tokens": {
+        "input": 45850,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      }
+    },
+    {
+      "id": "T2-CONTRIBUTOR",
+      "name": "为所有 prompt 模板加入 Contributor Mode（agent 自写 field report）",
+      "domain": "backend",
+      "agent": "codex-1",
+      "status": "done",
+      "review_level": "scan",
+      "depends_on": [
+        "T1-PROMPT-MODES"
+      ],
+      "created_at": "2026-03-21T17:58:10.592727Z",
+      "updated_at": "2026-03-21T18:12:49.145864+00:00",
+      "tmux": "codex-1",
+      "commits": [
+        "c3cc295"
+      ],
+      "tokens": {
+        "input": 22452,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      }
+    },
+    {
+      "id": "T3-NOTIFY",
+      "name": "升级 on-complete.sh Telegram 通知格式（20分钟假设，含 task name/tokens/duration/下一步）",
+      "domain": "backend",
+      "agent": "codex-1",
+      "status": "done",
+      "review_level": "full",
+      "depends_on": [],
+      "created_at": "2026-03-21T17:58:10.592727Z",
+      "updated_at": "2026-03-21T18:06:43.568978+00:00",
+      "tmux": "codex-2",
+      "commits": [
+        "740b4ed"
+      ],
+      "tokens": {
+        "input": 81491,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      }
+    },
+    {
+      "id": "T4-VALIDATE",
+      "name": "新增 validate-prompts.sh 脚本（检查 prompt 引用的脚本/字段是否存在，接入 health-check）",
+      "domain": "backend",
+      "agent": "codex-1",
+      "status": "done",
+      "review_level": "scan",
+      "depends_on": [
+        "T1-PROMPT-MODES",
+        "T2-CONTRIBUTOR"
+      ],
+      "created_at": "2026-03-21T17:58:10.592727Z",
+      "updated_at": "2026-03-21T18:18:33.854347+00:00",
+      "tmux": "codex-2",
+      "commits": [
+        "552999e"
+      ],
+      "tokens": {
+        "input": 52881,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      }
+    },
+    {
+      "id": "T5-DASHBOARD",
+      "name": "新增 review-dashboard.sh 脚本（发版前 review readiness checklist），接入 SKILL.md deploy 流程",
+      "domain": "backend",
+      "agent": "codex-1",
+      "status": "done",
+      "review_level": "full",
+      "depends_on": [],
+      "created_at": "2026-03-21T17:58:10.592727Z",
+      "updated_at": "2026-03-21T18:09:05.906744+00:00",
+      "tmux": "codex-3",
+      "commits": [
+        "740b4ed",
+        "740b4edc77639b85f80e3266881a9c7403b660d0"
+      ],
+      "tokens": {
+        "input": 69501,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      }
+    },
+    {
+      "id": "T6-DOCS",
+      "name": "同步更新 playbook.md + SKILL.md（记录所有新机制），push 到 GitHub",
+      "domain": "backend",
+      "agent": "codex-1",
+      "status": "done",
+      "review_level": "scan",
+      "depends_on": [
+        "T1-PROMPT-MODES",
+        "T2-CONTRIBUTOR",
+        "T3-NOTIFY",
+        "T4-VALIDATE",
+        "T5-DASHBOARD"
+      ],
+      "created_at": "2026-03-21T17:58:10.592727Z",
+      "updated_at": "2026-03-21T18:23:28.405184+00:00",
+      "tmux": "codex-1",
+      "commits": [
+        "caedccd"
+      ],
+      "tokens": {
+        "input": 38843,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      }
+    },
+    {
+      "id": "T3-NOTIFY-REVIEW",
+      "name": "Review T3-NOTIFY: on-complete.sh 通知格式升级 + T5-DASHBOARD review-dashboard.sh",
+      "domain": "backend",
+      "agent": "cc-review",
+      "status": "done",
+      "review_level": "skip",
+      "depends_on": [
+        "T3-NOTIFY",
+        "T5-DASHBOARD"
+      ],
+      "created_at": "2026-03-21T18:10:34.934982Z",
+      "updated_at": "2026-03-21T18:13:01.775286+00:00",
+      "tmux": "cc-review",
+      "commits": [
+        "c3cc295"
+      ],
+      "tokens": {
+        "input": 8,
+        "output": 6290,
+        "cache_read": 214763,
+        "cache_write": 20386
+      }
+    }
+  ]
+}

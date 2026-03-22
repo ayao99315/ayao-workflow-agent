@@ -1,115 +1,163 @@
 {
-  "batch_id": "2026-03-20-coding-swarm-agent-3",
+  "batch_id": "2026-03-22-coding-swarm-agent-2",
   "project": "coding-swarm-agent",
-  "repo": "github.com/ayao99315/coding-swarm-agent",
-  "created_at": "2026-03-20T05:41:44Z",
-  "updated_at": "2026-03-20T05:55:53.379484+00:00",
+  "repo": "https://github.com/ayao99315/coding-swarm-agent",
+  "created_at": "2026-03-22T03:21:36Z",
+  "updated_at": "2026-03-22T03:40:28.435206+00:00",
   "tasks": [
     {
-      "id": "FIX-H1H2H3",
-      "name": "修复 update-task-status.sh + dispatch.sh：flock race guard / tmux写入 / heartbeat刷新",
+      "id": "T1-CONFIG",
+      "name": "配置系统：新增 swarm/config.json schema + scripts/swarm-config.sh 读写工具",
       "domain": "backend",
       "agent": "codex-1",
-      "tmux": "codex-1",
       "status": "done",
       "review_level": "full",
-      "note": "H1+H2+H3 集中在同两个文件，一次修完",
-      "commits": [
-        "34f30a7"
-      ],
-      "issue": null,
       "depends_on": [],
-      "created_at": "2026-03-20T05:43:56Z",
-      "updated_at": "2026-03-20T05:51:01.742196+00:00",
-      "attempts": 0,
-      "max_attempts": 3,
+      "created_at": "2026-03-22T03:21:49.582902Z",
+      "updated_at": "2026-03-22T03:29:34.180407+00:00",
+      "tmux": "codex-1",
+      "commits": [
+        "39c3ac5",
+        "984ea5a"
+      ],
       "tokens": {
-        "input": 71143,
+        "input": 96875,
         "output": 0,
         "cache_read": 0,
         "cache_write": 0
       }
     },
     {
-      "id": "FIX-H4",
-      "name": "修复 dispatch.sh force-commit：git add -A → git add -u 避免敏感文件泄漏",
-      "domain": "backend",
-      "agent": "codex-1",
-      "tmux": "codex-1",
+      "id": "T2-PROMPTS",
+      "name": "新增 prompt-cc-writing.md + prompt-cc-analysis.md 模板",
+      "domain": "docs",
+      "agent": "codex-2",
       "status": "done",
       "review_level": "scan",
-      "note": "H4 单独拆，依赖 H1H2H3 完成后的 dispatch.sh 版本",
+      "depends_on": [],
+      "created_at": "2026-03-22T03:21:49.582902Z",
+      "updated_at": "2026-03-22T03:28:28.774090+00:00",
+      "tmux": "codex-2",
       "commits": [
-        "7ea9d00"
+        "984ea5a"
       ],
-      "issue": null,
-      "depends_on": [
-        "FIX-H1H2H3"
-      ],
-      "created_at": "2026-03-20T05:43:56Z",
-      "updated_at": "2026-03-20T05:52:59.876168+00:00",
-      "attempts": 0,
-      "max_attempts": 3,
       "tokens": {
-        "input": 0,
+        "input": 41788,
         "output": 0,
         "cache_read": 0,
         "cache_write": 0
       }
     },
     {
-      "id": "FIX-H5",
-      "name": "修正 SKILL.md 自动化描述：删除旧 webhook 描述，改为 openclaw system event 说明",
+      "id": "T3-IMAGE",
+      "name": "新增 generate-image.sh + backends/（nano-banana/openai/stub）生图工具",
       "domain": "backend",
-      "agent": "codex-1",
-      "tmux": "codex-1",
+      "agent": "codex-3",
       "status": "done",
       "review_level": "scan",
-      "note": "纯文档修改，与脚本修改无依赖，可并行",
-      "commits": [
-        "2d7ba0d"
-      ],
-      "issue": null,
       "depends_on": [],
-      "created_at": "2026-03-20T05:43:56Z",
-      "updated_at": "2026-03-20T05:49:21.473215+00:00",
-      "attempts": 0,
-      "max_attempts": 3,
+      "created_at": "2026-03-22T03:21:49.582902Z",
+      "updated_at": "2026-03-22T03:31:19.592175+00:00",
+      "tmux": "codex-3",
+      "commits": [
+        "4d11241",
+        "984ea5a"
+      ],
       "tokens": {
-        "input": 17,
-        "output": 8142,
-        "cache_read": 667799,
-        "cache_write": 29764
+        "input": 54050,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
       }
     },
     {
-      "id": "FIX-REVIEW",
-      "name": "Review FIX-H1H2H3 + FIX-H4 + FIX-H5：验证所有修复正确",
+      "id": "T4-CONFIG-WIRE",
+      "name": "接入配置系统：dispatch.sh + on-complete.sh 硬编码替换为 swarm-config.sh 调用",
       "domain": "backend",
-      "agent": "cc-review",
-      "tmux": "cc-review",
+      "agent": "codex-1",
       "status": "done",
       "review_level": "full",
-      "note": "重点验证 flock race guard、heartbeat 有效性、SKILL.md 一致性",
-      "commits": [
-        "7ea9d0063a8b227528013da7773a638426561846"
-      ],
-      "issue": null,
       "depends_on": [
-        "FIX-H1H2H3",
-        "FIX-H4",
-        "FIX-H5"
+        "T1-CONFIG"
       ],
-      "created_at": "2026-03-20T05:43:56Z",
-      "updated_at": "2026-03-20T05:55:53.379484+00:00",
-      "attempts": 0,
-      "max_attempts": 3,
+      "created_at": "2026-03-22T03:21:49.582902Z",
+      "updated_at": "2026-03-22T03:33:08.691132+00:00",
+      "tmux": "codex-1",
+      "commits": [
+        "21ac761"
+      ],
       "tokens": {
-        "input": 0,
+        "input": 29085,
         "output": 0,
         "cache_read": 0,
         "cache_write": 0
       }
+    },
+    {
+      "id": "T5-MEMORY",
+      "name": "项目记忆库：新增 projects/<slug>/ 结构 + on-complete.sh 写 retro + dispatch.sh 注入 cc-plan context",
+      "domain": "backend",
+      "agent": "codex-2",
+      "status": "done",
+      "review_level": "full",
+      "depends_on": [
+        "T1-CONFIG",
+        "T4-CONFIG-WIRE"
+      ],
+      "created_at": "2026-03-22T03:21:49.582902Z",
+      "updated_at": "2026-03-22T03:39:36.379982+00:00",
+      "tmux": "codex-1",
+      "commits": [
+        "20804f4"
+      ],
+      "tokens": {
+        "input": 37743,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      }
+    },
+    {
+      "id": "T6-CONTRIBUTOR-NOTIFY",
+      "name": "Contributor Mode 通知：所有 prompt 模板加 field report 后自动发 Telegram 通知",
+      "domain": "backend",
+      "agent": "codex-3",
+      "status": "done",
+      "review_level": "scan",
+      "depends_on": [
+        "T1-CONFIG"
+      ],
+      "created_at": "2026-03-22T03:21:49.582902Z",
+      "updated_at": "2026-03-22T03:35:11.947118+00:00",
+      "tmux": "codex-2",
+      "commits": [
+        "39dc3dd"
+      ],
+      "tokens": {
+        "input": 32277,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      }
+    },
+    {
+      "id": "T7-DOCS",
+      "name": "文档同步：更新 SKILL.md + playbook 记录所有新机制，发布 v1.5.0",
+      "domain": "docs",
+      "agent": "cc-plan",
+      "status": "running",
+      "review_level": "scan",
+      "depends_on": [
+        "T1-CONFIG",
+        "T2-PROMPTS",
+        "T3-IMAGE",
+        "T4-CONFIG-WIRE",
+        "T5-MEMORY",
+        "T6-CONTRIBUTOR-NOTIFY"
+      ],
+      "created_at": "2026-03-22T03:21:49.582902Z",
+      "updated_at": "2026-03-22T03:40:28.435206+00:00",
+      "tmux": "cc-plan"
     }
   ]
 }

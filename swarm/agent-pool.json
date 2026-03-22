@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-03-20T05:53:27.170484+00:00",
+  "updated_at": "2026-03-22T03:40:28.471267+00:00",
   "limits": {
     "max_codex": 4,
     "max_cc_frontend": 2,
@@ -22,40 +22,40 @@
       "type": "claude",
       "domain": "plan",
       "tmux": "cc-plan",
-      "status": "idle",
-      "current_task": null,
+      "status": "busy",
+      "current_task": "T7-DOCS",
       "spawned_at": null,
-      "last_seen": "2026-03-20T01:42:00.274135+00:00"
+      "last_seen": "2026-03-22T03:40:28.471267+00:00"
     },
     {
       "id": "cc-review",
       "type": "claude",
       "domain": "review",
       "tmux": "cc-review",
-      "status": "busy",
-      "current_task": "FIX-REVIEW",
+      "status": "idle",
+      "current_task": null,
       "spawned_at": null,
-      "last_seen": "2026-03-20T05:53:27.170484+00:00"
+      "last_seen": "2026-03-21T18:13:01.859192+00:00"
     },
     {
       "id": "codex-review",
       "type": "codex",
       "domain": "review",
       "tmux": "codex-review",
-      "status": "idle",
+      "status": "dead",
       "current_task": null,
       "spawned_at": null,
       "last_seen": "2026-03-19T17:36:26.354660+00:00"
     },
     {
-      "id": "codex-2",
+      "id": "codex-4",
       "type": "codex",
       "domain": "backend",
-      "tmux": "codex-2",
+      "tmux": "codex-4",
       "status": "idle",
       "current_task": null,
-      "spawned_at": "2026-03-20T05:51:01Z",
-      "last_seen": "2026-03-20T05:51:01Z"
+      "spawned_at": "2026-03-21T18:03:02Z",
+      "last_seen": "2026-03-21T18:03:02Z"
     }
   ]
 }

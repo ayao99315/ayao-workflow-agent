@@ -1,0 +1,19 @@
+{
+  "agent": "main",
+  "updated_at": "2026-03-22T02:01:19+08:00",
+  "date": "2026-03-22",
+  "summary": "今日完成 swarm prompt 模板增强，为编码与 review agent 增加认知模式与完整性原则。",
+  "tasks_done": [
+    "PROMPTS-T001: 为 prompt-codex / prompt-cc-frontend / prompt-cc-review 模板加入认知模式与 Completeness Principle，commit 51bf329"
+  ],
+  "tasks_pending": [],
+  "current_project": "coding-swarm-agent",
+  "tokens": {
+    "codex_input": 0,
+    "codex_output": 0,
+    "cc_input": 0,
+    "cc_output": 0
+  },
+  "blockers": null,
+  "notes": "三处模板均在实际 prompt 代码块中插入新章节，变更已推送到 main。"
+}
