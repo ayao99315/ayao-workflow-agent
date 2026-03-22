@@ -2,7 +2,7 @@
 # cleanup-agents.sh — Close all agent tmux sessions after swarm completion
 # Usage: cleanup-agents.sh
 #
-# Called automatically by agent-manager.sh when all tasks are done.
+# Called automatically by on-complete.sh when all tasks are done.
 # Also safe to call manually.
 #
 # Sessions that are ALWAYS preserved (fixed infrastructure):

@@ -181,7 +181,7 @@ post-commit hook 触发 → 写信号 + 唤醒编排层
 | **后端审查** | `cc-review` | Claude Code | 审查 Codex 写的后端代码（full review） |
 | **前端审查** | `codex-review` | Codex | 审查前端代码（full/scan review） |
 
-**动态 Session（agent-manager 按需自动创建/销毁）：**
+**动态 Session（按 swarm 生命周期维护）：**
 
 | Agent | tmux 会话 | 工具 | 职责 | 上限 |
 |-------|----------|------|------|------|
@@ -225,15 +225,12 @@ Codex 写的代码（后端）  → cc-review（Claude Code 审查）
 前端代码               → codex-review（Codex 审查）
 ```
 
-### 4.6 动态扩容规则
+### 4.6 完成后清理规则
 
 ```
-任务完成 → agent-manager.sh 评估
-  pending 后端 / 内部前端任务 > 空闲 Codex agent → spawn codex-N（max 4）
-  pending 外部前端任务              → spawn cc-frontend-N（max 2）
-  内存 < 2GB → block，拒绝扩容，发 Telegram 警告
-  内存 2~4GB → warn，扩容但发内存提示
-  内存 > 4GB → ok，直接扩容
+任务完成 → on-complete.sh 同步 agent-pool 状态
+  检查 agent-pool.json 里的 tmux session 是否还活着
+  已消失 session → 标记为 dead
   全部任务完成 → 自动关闭所有动态 session → 触发 codex-deploy
 ```
 
@@ -484,7 +481,7 @@ cc-frontend:  polygo-web-admin/src/app/accounts/
 │ Agent 命令结束 → on-complete.sh                          │
 │   → update-task-status.sh（原子更新状态 + tokens + 解锁） │
 │   → update-agent-status.sh（标 agent idle）              │
-│   → agent-manager.sh（动态扩容 / 全部完成时触发 cleanup） │
+│   → 同步 agent-pool 活性；全部完成时触发 cleanup           │
 │   → POST /hooks/agent（触发隔离 agent turn）             │
 │     → 隔离 agent（sonnet 模型）验证 scope                 │
 │     → 按 review_level 处理                               │
@@ -509,27 +506,19 @@ cc-frontend:  polygo-web-admin/src/app/accounts/
 | 脚本 | 触发方式 | 作用 |
 |------|---------|------|
 | `dispatch.sh` | 编排层调用 | 标记 running + 标 agent busy + tee 捕获输出 + **prompt 写 tmpfile（避免 shell 转义问题）** + force-commit + on-complete 回调 |
-| `on-complete.sh` | agent 命令结束时 | 解析 token + 更新状态 + 标 agent idle + agent-manager + **直接 system event 唤醒主 session** + 里程碑预警 + **swarm 总汇报** + Telegram 通知 |
+| `on-complete.sh` | agent 命令结束时 | 解析 token + 更新状态 + 标 agent idle + 同步 `agent-pool.json` 活性 + 全部完成时触发 cleanup + **直接 system event 唤醒主 session** + 里程碑预警 + **swarm 总汇报** + Telegram 通知 |
 | `update-task-status.sh` | on-complete / dispatch 调用 | 原子更新 active-tasks.json（状态 + commit + tokens + **同步 blocked→pending 自动解锁**） |
 | `update-agent-status.sh` | dispatch / on-complete 调用 | 更新 agent-pool.json 单个 agent 的 idle/busy/dead 状态 |
 | `parse-tokens.sh` | on-complete 调用 | 解析 agent 输出 log，支持 Claude Code / Codex 两种格式，输出 JSON |
 | `install-hooks.sh` | 项目初始化一次 | 安装 post-commit hook（tsc + ESLint 双门禁 + 自动 push） |
 
-**动态 Agent 管理：**
+**Swarm 收尾与巡检：**
 
 | 脚本 | 触发方式 | 作用 |
 |------|---------|------|
-| `agent-manager.sh` | on-complete 自动触发 / 手动 | 评估任务队列 → 按需扩容；全部完成时触发 cleanup |
-| `spawn-agent.sh` | agent-manager 调用 | 内存检查 → 创建 tmux session → 注册 agent-pool.json |
-| `check-memory.sh` | spawn-agent 调用 | 读取可用 RAM；ok(>4GB) / warn(2~4GB) / block(<2GB) |
+| `check-memory.sh` | 手动调用 | 读取可用 RAM；ok(>4GB) / warn(2~4GB) / block(<2GB) |
 | `health-check.sh` | HEARTBEAT.md 触发 | 巡检所有 running 任务：检测卡住(>15min)/死亡/静默退出 |
-| `cleanup-agents.sh` | agent-manager（全部完成时）| 关闭所有动态 session；保留 cc-plan/cc-review/codex-review |
-
-**兜底：**
-
-| 脚本 | 触发方式 | 作用 |
-|------|---------|------|
-| `monitor.sh` | cron（可选） | 安全网：检测卡住的 agent |
+| `cleanup-agents.sh` | on-complete（全部完成时）| 关闭所有动态 session；保留 cc-plan/cc-review/codex-review |
 
 ### 9.3 主 Session 通知（v2.5 简化方案）
 
@@ -873,17 +862,14 @@ Agent 完成 → 编排层验证 scope
   ├── SKILL.md                      # 技能说明与完整流程
   ├── scripts/
   │   ├── dispatch.sh               # 派发包装器（running + busy + tee + force-commit + 回调）
-  │   ├── on-complete.sh            # 完成回调（tokens + 状态 + idle + agent-manager + webhook）
+  │   ├── on-complete.sh            # 完成回调（tokens + 状态 + idle + pool 活性同步 + cleanup + webhook）
   │   ├── update-task-status.sh     # 原子更新 active-tasks.json（状态 + tokens + 解锁）
   │   ├── update-agent-status.sh    # 更新 agent-pool.json 单个 agent 状态
   │   ├── parse-tokens.sh           # 解析 agent 输出 log 的 token 用量
   │   ├── install-hooks.sh          # 安装 post-commit hook（tsc + ESLint + 自动 push）
-  │   ├── agent-manager.sh          # 动态评估任务队列，按需扩容/触发 cleanup
-  │   ├── spawn-agent.sh            # 开新 tmux session + 注册 pool（含内存检查）
   │   ├── check-memory.sh           # 检查可用 RAM（ok >4GB / warn 2~4GB / block <2GB）
   │   ├── health-check.sh           # 巡检所有 running agent（卡住/死亡/静默退出）
   │   ├── cleanup-agents.sh         # 任务全完成后关闭动态 session，保留固定 session
-  │   └── monitor.sh                # 兜底 cron 监控（可选）
   └── references/
       ├── prompt-codex.md           # Codex prompt 模板（含质量规则 + 常见错误表）
       ├── prompt-cc-plan.md         # 规划 prompt 模板
@@ -1031,7 +1017,7 @@ git add -A && git commit -m "[预写好的 message]" && git push
 10. **Token 追踪** — parse-tokens.sh 解析 agent 输出，写入 tasks.tokens，里程碑预警
 11. **上下文隔离** — --print/exec 每任务新进程 + --no-session-persistence，零跨任务污染
 12. **最高权限** — CC bypassPermissions + Codex dangerously-bypass，无确认弹窗
-13. **动态 Agent 管理** — agent-manager 按任务队列自动扩容，内存守卫，任务完成后自动 cleanup
+13. **Swarm 收尾自动化** — on-complete.sh 同步 agent-pool 活性，cleanup-agents.sh 在全部任务完成后自动收尾
 14. **健康巡检** — health-check.sh 每 heartbeat 检测卡住/死亡 agent，自动 Telegram 告警
 
 ### 18.2 ❌ 踩过的坑与修复（全历史）
@@ -1084,8 +1070,7 @@ git add -A && git commit -m "[预写好的 message]" && git push
 
 | 问题 | v2.2 状态 | v2.3 修复 |
 |------|----------|----------|
-| Agent 数量固定，峰值不够用 | 只有 codex-1 跑后端，串行等待 | ✅ agent-manager.sh 按任务队列自动扩容（max codex-4 / cc-frontend-2） |
-| 内存无保护 | 可以无限 spawn，内存爆掉 | ✅ check-memory.sh 守卫：<2GB 拒绝扩容，2~4GB 告警，>4GB 直接扩 |
+| 内存判断靠感觉 | 增加额外 agent 前没有统一判断标准 | ✅ check-memory.sh 提供统一阈值：<2GB block，2~4GB warn，>4GB ok |
 | 不知道 agent 是否还活着 | 卡住的 agent 无人发现，任务悬空 | ✅ health-check.sh 每 heartbeat 检测卡住(>15min)/死亡/静默退出，自动 Telegram 告警 |
 | 任务完成后旧 session 堆积 | 需要手动关闭 tmux session | ✅ cleanup-agents.sh 全部任务完成后自动关闭动态 session，保留 cc-plan/cc-review/codex-review |
 | agent 命名不统一 | 随手叫 codex-a、codex-worker1 等 | ✅ 命名规则固化：codex-{1..4} + cc-frontend-{1..2}，系统约定不可改 |

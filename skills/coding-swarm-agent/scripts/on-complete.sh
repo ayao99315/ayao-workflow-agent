@@ -15,11 +15,15 @@ LOG_FILE="${4:-}"
 SIGNAL_FILE="/tmp/agent-swarm-signals.jsonl"
 SWARM_DIR="$HOME/.openclaw/workspace/swarm"
 TASKS_FILE="$SWARM_DIR/active-tasks.json"
+POOL_FILE="$SWARM_DIR/agent-pool.json"
+POOL_LOCK="${POOL_FILE}.lock"
+SWARM_COMPLETE_LOCK="/tmp/agent-swarm-manager.lock"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 TS=$(date +%s)
 COMMIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "none")
 COMMIT_MSG=$(git log -1 --pretty=%s 2>/dev/null || echo "")
+export PATH="/opt/homebrew/opt/util-linux/bin:$PATH"
 CONTRIBUTOR_REPORT=""
 if command -v git &>/dev/null && git rev-parse --git-dir &>/dev/null 2>&1; then
   CONTRIBUTOR_REPORT=$(git log -1 --format="%b" 2>/dev/null | head -8 || echo "")
@@ -87,8 +91,69 @@ if ! "$SCRIPT_DIR/update-agent-status.sh" "$SESSION" "idle" "" >/dev/null 2>>/tm
   :
 fi
 
-# Dynamic agent management: scale up/down based on task queue
-"$SCRIPT_DIR/agent-manager.sh" 2>>/tmp/agent-manager-errors.log &
+# Refresh pool liveness and trigger cleanup once the swarm is complete.
+(
+  exec 9>"$SWARM_COMPLETE_LOCK"
+  flock -n 9 || exit 0
+
+  ALL_DONE=$(
+    (
+      flock -x 8
+      TASKS_FILE="$TASKS_FILE" \
+      POOL_FILE="$POOL_FILE" \
+      python3 - <<'PYEOF'
+import json
+import os
+import subprocess
+from datetime import datetime, timezone
+
+tasks_file = os.environ["TASKS_FILE"]
+pool_file = os.environ["POOL_FILE"]
+
+if os.path.exists(pool_file):
+    with open(pool_file, encoding="utf-8") as f:
+        pool = json.load(f)
+
+    now = datetime.now(timezone.utc).isoformat()
+    for agent in pool.get("agents", []):
+        tmux_session = agent.get("tmux")
+        if not tmux_session:
+            continue
+        alive = subprocess.run(
+            ["tmux", "has-session", "-t", tmux_session], capture_output=True
+        ).returncode == 0
+        if alive:
+            agent["last_seen"] = now
+            if agent.get("status") == "dead":
+                agent["status"] = "idle"
+        else:
+            agent["status"] = "dead"
+            agent["last_seen"] = now
+
+    pool["updated_at"] = now
+    tmp = pool_file + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(pool, f, indent=2, ensure_ascii=False)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, pool_file)
+
+if not os.path.exists(tasks_file):
+    print("no")
+    raise SystemExit(0)
+
+with open(tasks_file, encoding="utf-8") as f:
+    tasks = json.load(f).get("tasks", [])
+
+print("yes" if tasks and all(t.get("status") in ("done", "failed", "escalated") for t in tasks) else "no")
+PYEOF
+    ) 8>"$POOL_LOCK" 2>>/tmp/on-complete-swarm-errors.log || echo "no"
+  )
+
+  if [[ "$ALL_DONE" == "yes" ]]; then
+    "$SCRIPT_DIR/cleanup-agents.sh" 2>>/tmp/cleanup-agents-errors.log || true
+  fi
+) &
 
 # Read config
 NOTIFY_TARGET=$("$SCRIPT_DIR/swarm-config.sh" resolve notify.target 2>/dev/null || cat "$SWARM_DIR/notify-target" 2>/dev/null || echo "")
