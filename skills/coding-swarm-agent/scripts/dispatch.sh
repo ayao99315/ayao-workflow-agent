@@ -209,19 +209,19 @@ WORKDIR="$(pwd)"
 COMMAND=( "$@" )
 
 cleanup() {
-  if [[ -n "\${PROMPT_TMP_FILE}" ]] && [[ -f "\${PROMPT_TMP_FILE}" ]]; then
-    rm -f "\${PROMPT_TMP_FILE}"
+  if [[ -n "${PROMPT_TMP_FILE}" ]] && [[ -f "${PROMPT_TMP_FILE}" ]]; then
+    rm -f "${PROMPT_TMP_FILE}"
   fi
 }
 trap cleanup EXIT
 
 run_agent() {
-  case "\${PROMPT_MODE}" in
+  case "${PROMPT_MODE}" in
     stdin)
-      cat "\${PROMPT_TMP_FILE}" | "\${COMMAND[@]}"
+      cat "${PROMPT_TMP_FILE}" | "${COMMAND[@]}"
       ;;
     *)
-      "\${COMMAND[@]}"
+      "${COMMAND[@]}"
       ;;
   esac
 }
@@ -231,7 +231,7 @@ if [[ "${#COMMAND[@]}" -eq 0 ]]; then
   exit 1
 fi
 
-if [[ "$CC_JSON_MODE" == "true" ]]; then
+if [[ "${CC_JSON_MODE}" == "true" ]]; then
   # stdout only → python intercept → tee to LOG_FILE
   # stderr is not merged so Claude JSON stdout stays parseable
   run_agent 2>/dev/null | python3 -c '
@@ -247,31 +247,30 @@ try:
     print(obj.get("result") or raw)
 except Exception:
     sys.stdout.write(raw)
-' "$CC_JSON_FILE" | tee "$LOG_FILE"
+' "${CC_JSON_FILE}" | tee "${LOG_FILE}"
   EC=${PIPESTATUS[0]}
-  COMPLETE_LOG="$CC_JSON_FILE"
+  COMPLETE_LOG="${CC_JSON_FILE}"
 else
   # Standard mode: stdout + stderr piped through tee to LOG_FILE
-  run_agent 2>&1 | tee "$LOG_FILE"
+  run_agent 2>&1 | tee "${LOG_FILE}"
   EC=${PIPESTATUS[0]}
-  COMPLETE_LOG="$LOG_FILE"
+  COMPLETE_LOG="${LOG_FILE}"
 fi
 
 # Force-commit any uncommitted changes (catches agents that forget)
-# Use git add with pathspec to exclude workspace swarm/ files (active-tasks.json etc.)
 FC_EC=0
-if [ -n "\$(git -C "\${WORKDIR}" status --porcelain 2>/dev/null)" ]; then
-  git -C "\${WORKDIR}" add -- . ':!../../swarm/' ':!../../reports/' ':!../../memory/' \
-    2>/dev/null || git -C "\${WORKDIR}" add -A
-  if [ -n "\$(git -C "\${WORKDIR}" diff --cached --name-only 2>/dev/null)" ]; then
-    git -C "\${WORKDIR}" commit -m "feat: \${TASK_ID} auto-commit (agent forgot)" \
-      && git -C "\${WORKDIR}" push \
-      || FC_EC=\$?
+if [ -n "$(git -C "${WORKDIR}" status --porcelain 2>/dev/null)" ]; then
+  git -C "${WORKDIR}" add -- . ':!../../swarm/' ':!../../reports/' ':!../../memory/' \
+    2>/dev/null || git -C "${WORKDIR}" add -A
+  if [ -n "$(git -C "${WORKDIR}" diff --cached --name-only 2>/dev/null)" ]; then
+    git -C "${WORKDIR}" commit -m "feat: ${TASK_ID} auto-commit (agent forgot)" \
+      && git -C "${WORKDIR}" push \
+      || FC_EC=$?
   fi
 fi
-[ "\${FC_EC}" -ne 0 ] && EC="\${FC_EC}"
+[ "${FC_EC}" -ne 0 ] && EC="${FC_EC}"
 
-"\${ON_COMPLETE}" "\${TASK_ID}" "\${SESSION}" "\${EC}" "\${COMPLETE_LOG}"
+"${ON_COMPLETE}" "${TASK_ID}" "${SESSION}" "${EC}" "${COMPLETE_LOG}"
 
 SCRIPT
 
