@@ -6,3 +6,4 @@
 {"ts": "2026-03-22T04:21:13Z", "task_id": "FIX-H1H2H3", "task_name": "FIX-H1H2H3", "commit": "c21344f", "result": "done", "contributor_report": ""}
 {"ts": "2026-03-22T04:28:52Z", "task_id": "FIX-C", "task_name": "修复 agent-pool 并发写：spawn/update-agent-status/health-check/cleanup/agent-manager 统一加锁 + health-check 标 failed", "commit": "514821a", "result": "done", "contributor_report": "", "duration_sec": 485}
 {"ts": "2026-03-22T04:33:07Z", "task_id": "FIX-A", "task_name": "修复核心调度链路：python3 代码注入 + shell 注入 + dispatch mark-running 竞态 + fire-and-forget + task-not-found 假成功", "commit": "479ef84", "result": "done", "contributor_report": "", "duration_sec": 739}
+{"ts": "2026-03-22T05:09:13Z", "task_id": "FIX-D", "task_name": "修复独立脚本：swarm-new-batch 检查 running 任务 + review-dashboard 精确匹配 + exit 1 release gate", "commit": "24b409b", "result": "done", "contributor_report": "", "duration_sec": 2905}
