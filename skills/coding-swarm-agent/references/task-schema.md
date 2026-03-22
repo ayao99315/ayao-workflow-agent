@@ -9,7 +9,6 @@ Location: `~/.openclaw/workspace/swarm/active-tasks.json`
   "project": "project-name",
   "repo": "github.com/user/repo",
   "updated_at": "ISO8601",
-  "ui_quality": "internal | external",
   "milestones": [
     {
       "id": "M1",
@@ -31,6 +30,7 @@ Location: `~/.openclaw/workspace/swarm/active-tasks.json`
       "id": "T001",
       "name": "Short task name",
       "domain": "backend | frontend | docs | writing | analysis | design | test | deploy",
+      "ui_quality": "internal | external | null",
       "agent": "codex-1 | cc-plan | cc-frontend | cc-review | codex-review | codex-test | codex-deploy | null",
       "tmux": "tmux session name | null",
       "milestone": "M1 | null",
@@ -52,6 +52,23 @@ Location: `~/.openclaw/workspace/swarm/active-tasks.json`
       }
     }
   ]
+}
+```
+
+### ui_quality（仅 `domain=frontend` 时有效）
+
+- `internal`：内部工具、管理后台、自用界面 → 路由到 `codex-1`
+- `external`：对外产品 UI、用户可见界面 → 路由到 `cc-frontend`（Claude Code）
+- 省略时默认 `internal`
+
+示例 task：
+
+```json
+{
+  "id": "T003",
+  "domain": "frontend",
+  "ui_quality": "external",
+  "agent": "cc-frontend"
 }
 ```
 

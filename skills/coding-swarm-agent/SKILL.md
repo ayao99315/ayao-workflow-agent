@@ -13,7 +13,7 @@ Coordinate multiple coding agents (Claude Code + Codex) via tmux sessions on a s
 You (OpenClaw) = orchestrator
   ├→ cc-plan       (Claude Code)  — decompose requirements into atomic tasks
   ├→ codex-1       (Codex CLI)    — backend coding
-  ├→ cc-frontend   (Claude Code)  — frontend coding (ALL frontend work)
+  ├→ cc-frontend   (Claude Code)  — frontend coding (external-facing UI only)
   ├→ cc-review     (Claude Code)  — review Codex output
   └→ codex-review  (Codex CLI)    — review Claude Code output
 ```
@@ -266,7 +266,13 @@ $SKILL_DIR/scripts/review-dashboard.sh
 ### Phase 4: Dispatch
 
 For each ready task (status=pending, dependencies met):
-- Pick agent based on domain (backend→codex, frontend→cc-frontend, docs→cc-plan)
+- Pick agent based on domain and `ui_quality`:
+  - `domain=backend` → `codex-1`
+  - `domain=frontend, ui_quality=external` → `cc-frontend` (Claude Code sonnet)
+  - `domain=frontend, ui_quality=internal` (or omitted) → `codex-1` (save tokens)
+  - `domain=docs/writing/analysis/design` → `cc-plan` (Claude Code opus)
+  - `domain=test` → `codex-test`
+  - `domain=deploy` → `codex-deploy`
 - Generate prompt from template (`references/prompt-codex.md` or `references/prompt-cc-frontend.md`)
   The current prompt templates include `## 认知模式`, `## Completeness Principle`, and `## Contributor Mode（任务完成后填写）`. Keep those sections intact when adapting a task prompt.
   **Prompt quality rules:**
@@ -469,17 +475,17 @@ tmux new-session -d -s codex-review -c /path/to/project
 
 ### Model Selection Rules
 
-### Model Selection Rules
-
 #### Claude Code（`claude` CLI）
 
 | Agent | Model | Rationale |
 |---|---|---|
-| `cc-plan` | `claude-opus-4-6` | Planning/architecture/docs — always best model |
-| `cc-review` | `claude-sonnet-4-6` | Execution task, sonnet sufficient, saves quota |
-| `cc-frontend` | `claude-sonnet-4-6` | UI implementation, sonnet sufficient |
+| `cc-plan` | `claude-opus-4-6` | Planning/architecture/docs/writing/analysis |
+| `cc-review` | `claude-sonnet-4-6` | Code review |
+| `cc-frontend` | `claude-sonnet-4-6` | External-facing UI only (`ui_quality=external`) |
 
 > **文档任务路由规则**：`domain: docs` 的任务（更新 playbook、SKILL.md、README 等文档）统一派发给 `cc-plan`（claude-opus-4-6），使用与 cc-plan 相同的 dispatch 命令格式。原因：文档任务需要理解全局上下文和设计意图，opus 质量更好，且文档任务通常跟在一批代码任务之后，cc-plan session 已空闲。
+
+> **前端路由判断标准**：看“是否有真实用户看到”。`internal` 前端（管理后台、自用界面、运营工具）走 `codex-1`；`external` 前端（对外产品 UI、用户可见界面）走 `cc-frontend`。
 
 #### Codex（`codex` CLI）
 

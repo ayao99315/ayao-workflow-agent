@@ -160,16 +160,16 @@ post-commit hook 触发 → 写信号 + 唤醒编排层
 
 **Claude Code（贵，只用在需要深度推理的地方）：**
 - 规划 / 架构决策 / 需求分析 → `cc-plan`
-- **文档更新**（playbook、SKILL.md、README 等）→ `cc-plan`（opus，理解全局上下文）
+- 文档更新 → `cc-plan`
+- **对外产品前端**（`ui_quality=external`，有真实用户的界面）→ `cc-frontend`
 - 审查 Codex 写的后端代码 → `cc-review`
-- 对外产品的前端（高 UI 质量要求）→ `cc-frontend`
 
 **Codex（多账号，额度充足，能用 Codex 就用 Codex）：**
-- 后端实现、API、策略引擎、DB → `codex-1/2`
-- 内部工具前端（管理后台等）→ `codex-frontend`
+- 后端实现 → `codex-1/2`
+- **内部工具前端**（`ui_quality=internal`，管理后台/自用界面）→ `codex-1`（不单独开 `codex-frontend` session）
+- 测试 → `codex-test`
+- 部署 → `codex-deploy`
 - 审查前端代码 → `codex-review`
-- 里程碑测试 + 验收脚本 → `codex-test`
-- 构建 + 部署 → `codex-deploy`
 
 ### 4.2 Agent 配置与命名规则
 
@@ -185,30 +185,31 @@ post-commit hook 触发 → 写信号 + 唤醒编排层
 
 | Agent | tmux 会话 | 工具 | 职责 | 上限 |
 |-------|----------|------|------|------|
-| **后端工程师 1~4** | `codex-1` ~ `codex-4` | Codex | 后端逻辑、API、策略引擎、DB | 4 |
-| **内部前端** | `codex-frontend-1/2` | Codex | 管理后台、内部工具页面 | 2 |
+| **Codex 工程师 1~4** | `codex-1` ~ `codex-4` | Codex | 后端逻辑、API、策略引擎、DB、内部工具前端 | 4 |
 | **外部前端** | `cc-frontend-1/2` | Claude Code | 对外产品页、高 UI 质量场景 | 2 |
 | **测试** | `codex-test` | Codex | 里程碑单元测试 + 验收脚本 | 1 |
 | **部署** | `codex-deploy` | Codex | 构建 + Nginx 部署 + 通知 | 1 |
 
 > **命名规则写死**：不要手动改名，这是系统约定。
 
-> **实战经验：** PolyGo 项目（internal UI）直接用 `codex-frontend`，省出 Claude 额度给 review 和 plan 用。
+> **实战经验：** PolyGo 这类 internal UI 直接走 `codex-1`，把 Claude 额度留给 review 和 plan 更划算。
 
 ### 4.3 前端模型选择规则
 
 `cc-plan` 在规划阶段输出 `ui_quality` 字段，编排层自动按此选模型：
 
 ```
-ui_quality = "internal" → codex-frontend（管理后台、运营工具、数据看板）
+ui_quality = "internal" → codex-1（管理后台、运营工具、数据看板）
 ui_quality = "external" → cc-frontend（对外产品、用户界面、Landing page）
 ```
+
+判断标准只有一条：**是否有真实用户看到**。没有真实用户看到的内部界面，一律按 `internal` 处理。
 
 ### 4.4 任务分配规则
 
 ```
 后端逻辑 / API / 策略引擎 / DB / WebSocket  → codex-1 或 codex-2
-内部管理后台 / 数据看板                       → codex-frontend
+内部管理后台 / 数据看板                       → codex-1
 对外产品页 / 高 UI 质量页面                  → cc-frontend
 规划 / 分析 / 方案设计                        → cc-plan
 Codex 代码审查                               → cc-review
@@ -228,8 +229,7 @@ Codex 写的代码（后端）  → cc-review（Claude Code 审查）
 
 ```
 任务完成 → agent-manager.sh 评估
-  pending 后端任务 > 空闲后端 agent → spawn codex-N（max 4）
-  pending 内部前端任务              → spawn codex-frontend-N（max 2）
+  pending 后端 / 内部前端任务 > 空闲 Codex agent → spawn codex-N（max 4）
   pending 外部前端任务              → spawn cc-frontend-N（max 2）
   内存 < 2GB → block，拒绝扩容，发 Telegram 警告
   内存 2~4GB → warn，扩容但发内存提示
@@ -1076,7 +1076,7 @@ git add -A && git commit -m "[预写好的 message]" && git push
 | 问题 | v2.3 状态 | v2.4 修复 |
 |------|----------|----------|
 | 编排层绕过 dispatch.sh 直接 exec Codex | 无约束，偶尔发生 | ✅ SKILL.md 铁律：swarm 项目内一律走 dispatch.sh，禁止直接 exec |
-| 前端模型固定用 Claude Code | 不管内部/外部页面都用 CC，费额度 | ✅ `ui_quality` 字段：internal→codex-frontend，external→cc-frontend |
+| 前端模型固定用 Claude Code | 不管内部/外部页面都用 CC，费额度 | ✅ `ui_quality` 字段：internal→codex-1，external→cc-frontend |
 | 没有里程碑级测试 | 验收脚本靠人手动跑 | ✅ milestone-check.sh + codex-test agent |
 | 没有自动部署 | 人工 build + 部署 | ✅ codex-deploy + Nginx + Cloudflare Tunnel（polygo.doai.run）|
 
