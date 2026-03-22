@@ -291,10 +291,12 @@ For each ready task (status=pending, dependencies met):
   如需检查历史批次或其它任务文件，可追加 `--task-file /path/to/tasks.json`。
   Legacy single-string commands are still accepted for backward compatibility, but new docs should always use argv + `--prompt-file`.
   dispatch.sh automatically:
-  1. Updates active-tasks.json status to `running`
-  2. Appends a force-commit check after agent finishes (catches forgotten commits)
-  3. Calls on-complete.sh which updates status to `done`/`failed` + fires `openclaw system event` to wake orchestrator (AI)
-  4. Preserves the agent's Contributor Mode field report via the commit body, so the completion record explains what changed, what went wrong, and what was skipped
+  1. Validates TASK_ID against a whitelist regex (rejects injection payloads)
+  2. Updates active-tasks.json status to `running` (with tmux session written to `task.tmux` field); verifies tmux session exists **before** mark-running to avoid orphan states
+  3. Executes agent via quoted heredoc (`<<'SCRIPT'`, no shell interpolation) with variables passed as env vars — eliminates code injection surface
+  4. Appends a force-commit check after agent finishes (catches forgotten commits); cleanup trap rolls back status to `failed` on unexpected exit
+  5. Calls on-complete.sh which updates status to `done`/`failed` + fires `openclaw system event` to wake orchestrator (AI)
+  6. Preserves the agent's Contributor Mode field report via the commit body, so the completion record explains what changed, what went wrong, and what was skipped
 
 **Parallel dispatch:** OK if file scopes don't overlap. Check before dispatching.
 
@@ -578,6 +580,14 @@ projects/
 - **context.md**：记录项目的技术栈、关键决策、已知坑等背景信息。dispatch.sh 在派发 cc-plan 任务时会自动注入该文件内容，让规划 agent 拥有项目上下文。需人工维护，建议每个大批次结束后更新。
 - **retro.jsonl**：每条记录对应一个完成的任务，格式为 JSON Lines。on-complete.sh 在任务完成时自动 append，包含 task_id、status、elapsed、tokens、commit hash、field report 摘要等字段。用于复盘和趋势分析。
 
+## Known Limitations
+
+The following WARN-level issues were identified during the v1.6.0 security review and left as-is:
+
+1. **task-not-found vs race-protection share exit 2** — `update-task-status.sh` uses exit 2 for both "task not found in JSON" and "race-condition rollback". Could be split into exit 2 / exit 3 for finer-grained caller handling. Low impact: callers currently treat both as non-success.
+2. **generate-image.sh `--output` path not validated** — The output path is used as-is without directory-traversal checks. An agent could write to an arbitrary path via `--output ../../etc/foo`. Low risk in practice (agents run sandboxed and output is ephemeral).
+3. **`/tmp/agent-swarm-token-warned.json` not batch-isolated** — The token milestone de-dup file is global across batches. A warning suppressed in batch N stays suppressed in batch N+1. Workaround: manually delete the file between batches if milestone alerts are desired.
+
 ## References
 
 - `references/prompt-codex.md` — Codex backend coding prompt template
@@ -587,20 +597,21 @@ projects/
 - `references/prompt-cc-writing.md` — Non-code writing tasks (docs, emails, analysis reports, etc.)
 - `references/prompt-cc-analysis.md` — Code/data analysis tasks
 - `references/task-schema.md` — active-tasks.json schema and status definitions
-- `scripts/swarm-config.sh` — Unified config reader/writer for `swarm/config.json`. Commands: `get <dot.path>`, `set <dot.path> <value>`, `resolve <dot.path>` (expands `${ENV_VAR}` templates), `project get <dot.path>`
-- `scripts/generate-image.sh` — Generic image generation interface. Backends: `nano-banana` (Gemini), `openai` (DALL-E 3), `stub` (testing). Configured via `swarm/config.json` `image_generation.*`
-- `scripts/dispatch.sh` — Dispatch wrapper: mark running + mark agent busy + tee output + force-commit + on-complete callback. Reads `notify.verbose_dispatch` via swarm-config.sh; auto-injects `projects/<slug>/context.md` for cc-plan tasks
+- `scripts/swarm-config.sh` — Unified config reader/writer for `swarm/config.json`. Commands: `get <dot.path>`, `set <dot.path> <value>`, `resolve <dot.path>` (expands `${ENV_VAR}` templates), `project get <dot.path>`. Write path uses flock + tmpfile + fsync + os.replace; fail-fast on write error (never clears config)
+- `scripts/generate-image.sh` — Generic image generation interface. Backends: `nano-banana` (Gemini), `openai` (DALL-E 3), `stub` (testing). Configured via `swarm/config.json` `image_generation.*`. Backend whitelist validation + subprocess execution (no `source`); parameter validation with exit 1 on failure
+- `scripts/dispatch.sh` — Dispatch wrapper: TASK_ID whitelist validation + mark running (with tmux pre-check + cleanup trap rollback) + mark agent busy + tee output + quoted heredoc runner (no shell interpolation, env-var injection) + force-commit + on-complete callback. Reads `notify.verbose_dispatch` via swarm-config.sh; auto-injects `projects/<slug>/context.md` for cc-plan tasks
+- `scripts/swarm-new-batch.sh` — Archive current batch and create fresh active-tasks.json. Refuses to archive when running tasks exist (prevents late completions landing in new batch)
 - `scripts/on-complete.sh` — Completion callback: parse tokens + update status + mark agent idle + agent-manager + `openclaw system event` (wake orchestrator) + milestone alert + upgraded "20 分钟前通知" style notify. Reads `notify.target` via `swarm-config.sh resolve` (fallback: legacy notify-target file). Includes first 300 chars of commit body as Field Report in Telegram notification. Auto-appends retro record to `projects/<slug>/retro.jsonl`
-- `scripts/update-task-status.sh` — Atomically update task status in active-tasks.json (status + tokens + auto-unblock)
-- `scripts/update-agent-status.sh` — Update a single agent's status in agent-pool.json (idle/busy/dead)
+- `scripts/update-task-status.sh` — Atomically update task status in active-tasks.json (flock + tmpfile + fsync + os.replace). Features: auto-unblock dependents, task-not-found returns exit 2, heartbeat support (running→running updates `task.updated_at`)
+- `scripts/update-agent-status.sh` — Update a single agent's status in agent-pool.json (idle/busy/dead). Uses flock + tmpfile + fsync + os.replace for atomic writes
 - `scripts/parse-tokens.sh` — Parse token usage from agent output log (Claude Code + Codex formats)
 - `scripts/install-hooks.sh` — Install git post-commit hook (tsc + ESLint gates + auto-push)
-- `scripts/agent-manager.sh` — Evaluate task queue → scale agents up (spawn) or trigger cleanup when all done
-- `scripts/spawn-agent.sh` — Spawn a new tmux session + register in agent-pool.json (with memory check)
+- `scripts/agent-manager.sh` — Evaluate task queue → scale agents up (spawn) or trigger cleanup when all done. Global mutex lock prevents concurrent over-scaling. Runs synchronously (stderr captured to log)
+- `scripts/spawn-agent.sh` — Spawn a new tmux session + register in agent-pool.json (with memory check). Uses flock + atomic write for agent-pool.json
 - `scripts/check-memory.sh` — Check available RAM; ok/warn/block thresholds for safe agent spawning
-- `scripts/review-dashboard.sh` — Pre-deploy readiness dashboard; review task detection is more precise and ordering is stable by time
-- `scripts/health-check.sh` — Inspect all running agent sessions; detect stuck/dead agents, notify, and run prompt-reference validation at the end
+- `scripts/review-dashboard.sh` — Pre-deploy readiness dashboard; precise `depends_on` reverse-lookup (no T1/T10 false matches). Exits 1 when unfinished full-reviews exist (release gate)
+- `scripts/health-check.sh` — Inspect all running agent sessions; detect stuck/dead agents, mark their tasks as `failed` via update-task-status.sh, notify, and run prompt-reference validation. Uses flock + atomic write for agent-pool.json
 - `scripts/validate-prompts.sh` — Scan prompt templates under `references/` and verify every referenced `scripts/*.sh` path exists
-- `scripts/cleanup-agents.sh` — Kill all dynamic agent sessions after swarm completes; preserve fixed sessions
+- `scripts/cleanup-agents.sh` — Kill all dynamic agent sessions after swarm completes; preserve fixed sessions. Uses flock + atomic write for agent-pool.json
 - `scripts/monitor.sh` — Fallback cron monitor (safety net, optional)
 - Full design doc: `~/.openclaw/workspace/docs/coding-swarm-agent-playbook.md`

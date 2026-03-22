@@ -1109,6 +1109,25 @@ git add -A && git commit -m "[预写好的 message]" && git push
 | Codex --prompt-file 没真正走文件 | 把 tmpfile 内容重新拼回 argv 末尾，只解决部分 quoting 问题 | ✅ Codex 路径改为 stdin 管道（`cat prompt | codex exec`），Claude 路径不变，两者都稳 |
 | 旧历史数据格式不兼容 | 单文件包含 4 个项目 30 个任务，无 batch_id | ✅ migrate-history.py 一键拆分：按项目/日期分组，输出标准批次文件到 history/ |
 
+#### v1.6.0 — 安全 + 可靠性加固（2026-03-22）
+
+**Security**
+
+- 消除 python3 -c / heredoc 代码注入面（dispatch.sh / update-task-status.sh / on-complete.sh）：所有变量改为 env var 传入 Python，runner heredoc 改为 `<<'SCRIPT'`（无插值）
+- TASK_ID 白名单校验（regex），generate-image.sh backend 白名单 + `source` → subprocess 执行
+- swarm-config.sh 写入原子化（flock + tmpfile + fsync + os.replace），损坏时 fail-fast 不清空
+
+**Reliability**
+
+- agent-pool.json 所有写入路径统一 flock + atomic replace（spawn-agent / update-agent-status / health-check / cleanup-agents / agent-manager，共 5 个脚本）
+- agent-manager.sh 加全局互斥锁，避免并发过度扩容
+- health-check.sh 检测到卡死 agent 时，通过 update-task-status.sh 把任务标为 failed
+- dispatch.sh mark-running 竞态修复：tmux 检查提前到 mark-running 之前 + cleanup trap 失败时回滚为 failed + session 写入 task.tmux 字段
+- update-task-status.sh：task-not-found 返回 exit 2（非 exit 0 假成功）；flock 取消子 shell 包裹（exec 200> + flock -x 200）
+- heartbeat 刷新 task.updated_at（running→running 放行），health-check 能感知 agent 存活
+- swarm-new-batch.sh 有 running 任务时拒绝执行，避免晚到 completion 打到新批次
+- review-dashboard.sh 精确匹配（depends_on 反查杜绝 T1/T10 误判）+ 有未满足 full review 时 exit 1（release gate）
+
 ### 18.3 📈 未来改进方向
 
 1. **多项目支持** — swarm 配置按项目隔离，agent-pool.json 支持多 project context
@@ -1133,8 +1152,8 @@ git add -A && git commit -m "[预写好的 message]" && git push
 
 ---
 
-> **文档版本：** v2.5
+> **文档版本：** v2.7
 > **创建日期：** 2026-03-16
-> **更新日期：** 2026-03-19（v2.5: 去掉 webhook 改 system event 直接唤醒主 session + update-task-status.sh 同步 blocked→pending 解锁 + dispatch.sh --prompt-file tmpfile 修复 + on-complete.sh swarm 总汇报 + macOS tmpfile 兼容修复）
+> **更新日期：** 2026-03-22（v1.6.0: 核心调度链路安全修复 + agent-pool 原子写入统一 + dispatch/update-task-status 可靠性加固 + review-dashboard release gate）
 > **维护者：** 小明（OpenClaw Agent）
 > **状态：** ✅ 实战验证 + 复盘改进完成
