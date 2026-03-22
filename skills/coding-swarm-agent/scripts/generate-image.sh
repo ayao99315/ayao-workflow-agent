@@ -1,10 +1,11 @@
 #!/bin/bash
 # generate-image.sh — Unified image generation entrypoint with fail-safe stub fallback
 
-set -uo pipefail
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKENDS_DIR="$SCRIPT_DIR/backends"
+ALLOWED_BACKENDS=("nano-banana" "openai" "stub")
 
 PROMPT=""
 OUTPUT=""
@@ -73,7 +74,7 @@ parse_args() {
         ;;
       -h|--help)
         usage
-        return 1
+        exit 0
         ;;
       *)
         echo "❌ Unknown argument: $1" >&2
@@ -83,16 +84,17 @@ parse_args() {
     esac
   done
 
-  [[ -n "$PROMPT" ]] || {
-    echo "❌ --prompt is required" >&2
-    usage
-    return 1
-  }
-  [[ -n "$OUTPUT" ]] || {
-    echo "❌ --output is required" >&2
-    usage
-    return 1
-  }
+}
+
+validate_backend() {
+  local backend_name="$1"
+  local allowed=""
+
+  for allowed in "${ALLOWED_BACKENDS[@]}"; do
+    [[ "$backend_name" == "$allowed" ]] && return 0
+  done
+
+  return 1
 }
 
 resolve_default_backend() {
@@ -133,11 +135,7 @@ run_backend_script() {
     return 1
   fi
 
-  unset -f call_backend 2>/dev/null || true
-  # shellcheck source=/dev/null
-  source "$backend_script" || return 1
-  declare -F call_backend >/dev/null 2>&1 || return 1
-  call_backend "$PROMPT" "$OUTPUT" "$STYLE"
+  bash "$backend_script" "$PROMPT" "$OUTPUT" "$STYLE"
 }
 
 call_backend_safe() {
@@ -147,25 +145,43 @@ call_backend_safe() {
     fi
     BACKEND="stub"
     run_backend_script "stub" || {
-      echo "⚠️  Stub backend failed" >&2
+      echo "❌ Stub backend failed" >&2
       return 1
     }
   fi
 }
 
 main() {
-  parse_args "$@" || return 0
+  parse_args "$@"
+
+  if [[ -z "$PROMPT" || -z "$OUTPUT" ]]; then
+    echo "❌ --prompt and --output are required" >&2
+    exit 1
+  fi
+
+  if [[ -n "$BACKEND" ]] && ! validate_backend "$BACKEND"; then
+    echo "❌ Unknown backend: '$BACKEND'. Allowed: ${ALLOWED_BACKENDS[*]}" >&2
+    BACKEND="stub"
+  fi
 
   BACKEND="$(resolve_default_backend)"
-  mkdir -p "$(dirname "$OUTPUT")" || {
-    echo "⚠️  Failed to create output directory, using stub" >&2
-    BACKEND="stub"
-    mkdir -p "$(dirname "$OUTPUT")" 2>/dev/null || true
-  }
 
-  call_backend_safe || true
-  echo "✅ Image generated: $OUTPUT"
-  return 0
+  if ! validate_backend "$BACKEND"; then
+    echo "❌ Unknown backend: '$BACKEND'. Allowed: ${ALLOWED_BACKENDS[*]}" >&2
+    BACKEND="stub"
+  fi
+
+  mkdir -p "$(dirname "$OUTPUT")"
+
+  call_backend_safe
+
+  if [[ -f "$OUTPUT" ]]; then
+    echo "✅ Image generated: $OUTPUT"
+    return 0
+  fi
+
+  echo "❌ Image generation failed: output file not found" >&2
+  exit 1
 }
 
 main "$@"

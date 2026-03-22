@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+# Ensure flock is available on macOS when installed via Homebrew util-linux.
+export PATH="/opt/homebrew/opt/util-linux/bin:$PATH"
+
 CONFIG_FILE="${OPENCLAW_WORKSPACE:-$HOME/.openclaw/workspace}/swarm/config.json"
 TASKS_FILE="${OPENCLAW_WORKSPACE:-$HOME/.openclaw/workspace}/swarm/active-tasks.json"
 
@@ -32,7 +35,7 @@ if not os.path.exists(file_path):
 try:
     with open(file_path, "r", encoding="utf-8") as f:
         data = json.load(f)
-except Exception:
+except (FileNotFoundError, json.JSONDecodeError):
     print("", end="")
     raise SystemExit(0)
 
@@ -60,27 +63,37 @@ json_write() {
   local file="$1"
   local path="$2"
   local raw_value="$3"
+  local lock_file="${file}.lock"
 
-  python3 - "$file" "$path" "$raw_value" <<'PY'
+  mkdir -p "$(dirname "$file")"
+
+  (
+    flock -x 9
+    export TARGET_CONFIG_FILE="$file"
+    export TARGET_CONFIG_PATH="$path"
+    export TARGET_CONFIG_RAW_VALUE="$raw_value"
+    python3 - <<'PY'
 import json
 import os
 import sys
-import tempfile
 
-file_path, path, raw_value = sys.argv[1:4]
+config_file = os.environ["TARGET_CONFIG_FILE"]
+path = os.environ["TARGET_CONFIG_PATH"]
+raw_value = os.environ["TARGET_CONFIG_RAW_VALUE"]
 
-directory = os.path.dirname(file_path) or "."
-os.makedirs(directory, exist_ok=True)
-
-data = {}
-if os.path.exists(file_path):
+if os.path.exists(config_file):
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            loaded = json.load(f)
-        if isinstance(loaded, dict):
-            data = loaded
-    except Exception:
-        data = {}
+        with open(config_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except json.JSONDecodeError:
+        print("❌ config.json is corrupted, refusing to overwrite", file=sys.stderr)
+        raise SystemExit(1)
+else:
+    data = {}
+
+if not isinstance(data, dict):
+    print("❌ config.json root must be an object", file=sys.stderr)
+    raise SystemExit(1)
 
 parts = path.split(".")
 cursor = data
@@ -96,12 +109,14 @@ except Exception:
 
 cursor[parts[-1]] = value
 
-fd, tmp_path = tempfile.mkstemp(prefix=".config.", suffix=".tmp", dir=directory)
+tmp_path = config_file + ".tmp"
 try:
-    with os.fdopen(fd, "w", encoding="utf-8") as tmp:
+    with open(tmp_path, "w", encoding="utf-8") as tmp:
         json.dump(data, tmp, indent=2, ensure_ascii=False)
         tmp.write("\n")
-    os.replace(tmp_path, file_path)
+        tmp.flush()
+        os.fsync(tmp.fileno())
+    os.replace(tmp_path, config_file)
 except Exception:
     try:
         os.unlink(tmp_path)
@@ -109,6 +124,7 @@ except Exception:
         pass
     raise
 PY
+  ) 9>"$lock_file"
 }
 
 resolve_value() {

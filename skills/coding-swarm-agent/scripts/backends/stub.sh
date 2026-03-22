@@ -1,12 +1,18 @@
 #!/bin/bash
 # stub.sh — Offline placeholder image backend
 
-call_backend() {
-  local prompt="$1"
-  local output="$2"
-  local style="${3:-}"
+set -euo pipefail
 
-  STUB_PROMPT="$prompt" STUB_OUTPUT="$output" STUB_STYLE="$style" python3 - <<'PYEOF'
+PROMPT="${1:-}"
+OUTPUT="${2:-}"
+STYLE="${3:-}"
+
+if [[ -z "$PROMPT" || -z "$OUTPUT" ]]; then
+  echo "Usage: stub.sh <prompt> <output> [style]" >&2
+  exit 1
+fi
+
+STUB_PROMPT="$PROMPT" STUB_OUTPUT="$OUTPUT" STUB_STYLE="$STYLE" python3 - <<'PYEOF'
 import base64
 import os
 import textwrap
@@ -40,4 +46,3 @@ except ImportError:
         f.write(minimal_png)
     print("minimal stub image saved")
 PYEOF
-}
