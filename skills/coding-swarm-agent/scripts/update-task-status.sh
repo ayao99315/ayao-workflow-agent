@@ -31,7 +31,20 @@ fi
 #   - pending/failed/retrying → running claims the task (check-and-set)
 #   - running → running is treated as heartbeat and only refreshes updated_at
 #   - Other running transitions exit with code 2 so dispatch.sh skips duplicate dispatch
+LOCK_FD_OPEN=0
+cleanup_lock() {
+  local ec=$?
+  if [[ "${LOCK_FD_OPEN}" == "1" ]]; then
+    flock -u 200 2>/dev/null || true
+    exec 200>&- || true
+    LOCK_FD_OPEN=0
+  fi
+  return "$ec"
+}
+
 exec 200>"$LOCK_FILE"
+LOCK_FD_OPEN=1
+trap cleanup_lock EXIT
 flock -x 200
 
 set +e
@@ -125,9 +138,6 @@ print(f'{task_id} -> {new_status}' + (f' (commit: {commit_hash})' if commit_hash
 "
 UTS_EC=$?
 set -e
-
-flock -u 200
-exec 200>&-
 
 # If task just became done, check milestone completion in background
 if [[ "$NEW_STATUS" == "done" && "${UTS_EC:-0}" == "0" ]]; then

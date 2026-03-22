@@ -333,7 +333,7 @@ HEARTBEAT_PID_FILE="/tmp/agent-swarm-heartbeat-${SESSION}.pid"
   while true; do
     sleep 300
     tmux has-session -t "$SESSION" 2>/dev/null || break
-    "$SCRIPT_DIR/update-task-status.sh" "$TASK_ID" "running" 2>/dev/null || true
+    "$UPDATE_STATUS" "$TASK_ID" "running" 2>/dev/null || true
     "$SCRIPT_DIR/update-agent-status.sh" "$SESSION" "busy" "$TASK_ID" 2>/dev/null || true
   done
 ) >/dev/null 2>&1 &
