@@ -1,0 +1,110 @@
+{
+  "batch_id": "2026-03-22-coding-swarm-agent-3",
+  "project": "coding-swarm-agent",
+  "repo": "https://github.com/ayao99315/coding-swarm-agent",
+  "created_at": "2026-03-22T04:02:04Z",
+  "updated_at": "2026-03-22T04:15:46.930368+00:00",
+  "tasks": [
+    {
+      "id": "REVIEW-CODE",
+      "name": "代码层全面 review：逐脚本审查实现问题、race condition、edge case、安全漏洞",
+      "domain": "backend",
+      "agent": "codex-1",
+      "status": "done",
+      "review_level": "skip",
+      "depends_on": [],
+      "created_at": "2026-03-22T04:02:13.036004Z",
+      "updated_at": "2026-03-22T04:15:46.930368+00:00",
+      "tmux": "codex-1",
+      "tokens": {
+        "input": 95539,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "commits": [
+        "1a93cf1"
+      ]
+    },
+    {
+      "id": "REVIEW-ARCH",
+      "name": "架构层全面 review：审视整体设计、方向正确性、需求本身是否有盲区",
+      "domain": "backend",
+      "agent": "cc-plan",
+      "status": "done",
+      "review_level": "skip",
+      "depends_on": [],
+      "created_at": "2026-03-22T04:02:13.036004Z",
+      "updated_at": "2026-03-22T04:07:01.003838+00:00",
+      "tmux": "cc-plan",
+      "commits": [
+        "1f4b6fd"
+      ],
+      "tokens": {
+        "input": 1507,
+        "output": 8517,
+        "cache_read": 779770,
+        "cache_write": 113090
+      }
+    },
+    {
+      "id": "FIX-H1H2H3",
+      "name": "修复 update-task-status.sh（flock race guard + tmux 字段写入 + heartbeat task.updated_at）及 dispatch.sh 对应调用",
+      "domain": "backend",
+      "agent": "codex-1",
+      "status": "running",
+      "review_level": "full",
+      "depends_on": [],
+      "created_at": "2026-03-22T04:07:49.632152Z",
+      "updated_at": "2026-03-22T04:14:02.961352+00:00",
+      "tmux": "codex-1"
+    },
+    {
+      "id": "FIX-H4",
+      "name": "修复 dispatch.sh force-commit：git add -A → git add -u，commit message 注明 fallback",
+      "domain": "backend",
+      "agent": "codex-1",
+      "status": "pending",
+      "review_level": "scan",
+      "depends_on": [
+        "FIX-H1H2H3"
+      ],
+      "created_at": "2026-03-22T04:07:49.632152Z"
+    },
+    {
+      "id": "FIX-H5",
+      "name": "修正 SKILL.md 自动化描述：Phase 5 / Full Auto-Loop / Hotfix Flow 去除 webhook 误导",
+      "domain": "docs",
+      "agent": "cc-plan",
+      "status": "done",
+      "review_level": "scan",
+      "depends_on": [],
+      "created_at": "2026-03-22T04:07:49.632152Z",
+      "updated_at": "2026-03-22T04:12:34.753576+00:00",
+      "tmux": "cc-plan",
+      "commits": [
+        "1f4b6fd"
+      ],
+      "tokens": {
+        "input": 22,
+        "output": 7268,
+        "cache_read": 815836,
+        "cache_write": 27222
+      }
+    },
+    {
+      "id": "FIX-REVIEW",
+      "name": "验收 FIX-H1H2H3 + FIX-H4 + FIX-H5 修改",
+      "domain": "backend",
+      "agent": "cc-review",
+      "status": "blocked",
+      "review_level": "skip",
+      "depends_on": [
+        "FIX-H1H2H3",
+        "FIX-H4",
+        "FIX-H5"
+      ],
+      "created_at": "2026-03-22T04:07:49.632152Z"
+    }
+  ]
+}

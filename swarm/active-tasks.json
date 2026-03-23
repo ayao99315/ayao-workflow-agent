@@ -1,163 +1,42 @@
 {
-  "batch_id": "2026-03-22-coding-swarm-agent-2",
-  "project": "coding-swarm-agent",
-  "repo": "https://github.com/ayao99315/coding-swarm-agent",
-  "created_at": "2026-03-22T03:21:36Z",
-  "updated_at": "2026-03-22T03:40:28.435206+00:00",
+  "batch_id": "2026-03-23-ayao-workflow-agent",
+  "project": "ayao-workflow-agent",
+  "repo": "https://github.com/ayao99315/ayao-workflow-agent",
+  "created_at": "2026-03-22T16:18:59Z",
+  "updated_at": "2026-03-23T00:05:33.490845+00:00",
   "tasks": [
     {
-      "id": "T1-CONFIG",
-      "name": "配置系统：新增 swarm/config.json schema + scripts/swarm-config.sh 读写工具",
-      "domain": "backend",
-      "agent": "codex-1",
-      "status": "done",
-      "review_level": "full",
-      "depends_on": [],
-      "created_at": "2026-03-22T03:21:49.582902Z",
-      "updated_at": "2026-03-22T03:29:34.180407+00:00",
-      "tmux": "codex-1",
-      "commits": [
-        "39c3ac5",
-        "984ea5a"
-      ],
-      "tokens": {
-        "input": 96875,
-        "output": 0,
-        "cache_read": 0,
-        "cache_write": 0
-      }
-    },
-    {
-      "id": "T2-PROMPTS",
-      "name": "新增 prompt-cc-writing.md + prompt-cc-analysis.md 模板",
+      "id": "DOC-PLAYBOOK",
+      "name": "深度读代码后重写 agent-swarm-playbook.md，去历史内容，反映当前架构",
       "domain": "docs",
-      "agent": "codex-2",
       "status": "done",
-      "review_level": "scan",
-      "depends_on": [],
-      "created_at": "2026-03-22T03:21:49.582902Z",
-      "updated_at": "2026-03-22T03:28:28.774090+00:00",
-      "tmux": "codex-2",
-      "commits": [
-        "984ea5a"
-      ],
-      "tokens": {
-        "input": 41788,
-        "output": 0,
-        "cache_read": 0,
-        "cache_write": 0
-      }
-    },
-    {
-      "id": "T3-IMAGE",
-      "name": "新增 generate-image.sh + backends/（nano-banana/openai/stub）生图工具",
-      "domain": "backend",
-      "agent": "codex-3",
-      "status": "done",
-      "review_level": "scan",
-      "depends_on": [],
-      "created_at": "2026-03-22T03:21:49.582902Z",
-      "updated_at": "2026-03-22T03:31:19.592175+00:00",
-      "tmux": "codex-3",
-      "commits": [
-        "4d11241",
-        "984ea5a"
-      ],
-      "tokens": {
-        "input": 54050,
-        "output": 0,
-        "cache_read": 0,
-        "cache_write": 0
-      }
-    },
-    {
-      "id": "T4-CONFIG-WIRE",
-      "name": "接入配置系统：dispatch.sh + on-complete.sh 硬编码替换为 swarm-config.sh 调用",
-      "domain": "backend",
-      "agent": "codex-1",
-      "status": "done",
-      "review_level": "full",
-      "depends_on": [
-        "T1-CONFIG"
-      ],
-      "created_at": "2026-03-22T03:21:49.582902Z",
-      "updated_at": "2026-03-22T03:33:08.691132+00:00",
-      "tmux": "codex-1",
-      "commits": [
-        "21ac761"
-      ],
-      "tokens": {
-        "input": 29085,
-        "output": 0,
-        "cache_read": 0,
-        "cache_write": 0
-      }
-    },
-    {
-      "id": "T5-MEMORY",
-      "name": "项目记忆库：新增 projects/<slug>/ 结构 + on-complete.sh 写 retro + dispatch.sh 注入 cc-plan context",
-      "domain": "backend",
-      "agent": "codex-2",
-      "status": "done",
-      "review_level": "full",
-      "depends_on": [
-        "T1-CONFIG",
-        "T4-CONFIG-WIRE"
-      ],
-      "created_at": "2026-03-22T03:21:49.582902Z",
-      "updated_at": "2026-03-22T03:39:36.379982+00:00",
-      "tmux": "codex-1",
-      "commits": [
-        "20804f4"
-      ],
-      "tokens": {
-        "input": 37743,
-        "output": 0,
-        "cache_read": 0,
-        "cache_write": 0
-      }
-    },
-    {
-      "id": "T6-CONTRIBUTOR-NOTIFY",
-      "name": "Contributor Mode 通知：所有 prompt 模板加 field report 后自动发 Telegram 通知",
-      "domain": "backend",
-      "agent": "codex-3",
-      "status": "done",
-      "review_level": "scan",
-      "depends_on": [
-        "T1-CONFIG"
-      ],
-      "created_at": "2026-03-22T03:21:49.582902Z",
-      "updated_at": "2026-03-22T03:35:11.947118+00:00",
-      "tmux": "codex-2",
-      "commits": [
-        "39dc3dd"
-      ],
-      "tokens": {
-        "input": 32277,
-        "output": 0,
-        "cache_read": 0,
-        "cache_write": 0
-      }
-    },
-    {
-      "id": "T7-DOCS",
-      "name": "文档同步：更新 SKILL.md + playbook 记录所有新机制，发布 v1.5.0",
-      "domain": "docs",
       "agent": "cc-plan",
-      "status": "running",
-      "review_level": "scan",
-      "depends_on": [
-        "T1-CONFIG",
-        "T2-PROMPTS",
-        "T3-IMAGE",
-        "T4-CONFIG-WIRE",
-        "T5-MEMORY",
-        "T6-CONTRIBUTOR-NOTIFY"
+      "review_level": "skip",
+      "depends_on": [],
+      "created_at": "2026-03-22T16:19:05.313319Z",
+      "updated_at": "2026-03-22T16:31:36.796931+00:00",
+      "tmux": "cc-plan",
+      "commits": [
+        "1f4b6fd"
       ],
-      "created_at": "2026-03-22T03:21:49.582902Z",
-      "updated_at": "2026-03-22T03:40:28.435206+00:00",
-      "tmux": "cc-plan"
+      "tokens": {
+        "input": 1720,
+        "output": 31945,
+        "cache_read": 1654883,
+        "cache_write": 131844
+      }
+    },
+    {
+      "id": "FIX-ONCOMPLETE",
+      "name": "修复 dispatch.sh 后台启动时 on-complete.sh 不被执行的问题",
+      "domain": "backend",
+      "status": "running",
+      "agent": "codex-1",
+      "review_level": "full",
+      "depends_on": [],
+      "created_at": "2026-03-22T23:58:28.460118Z",
+      "updated_at": "2026-03-23T00:05:33.490845+00:00",
+      "tmux": "codex-1"
     }
   ]
 }

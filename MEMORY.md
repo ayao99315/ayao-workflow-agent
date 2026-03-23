@@ -29,12 +29,12 @@
 ## Agent Swarm 系统
 
 ### Skill
-- 名称: coding-swarm-agent（原 agent-swarm，已改名）
-- ClawHub: coding-swarm-agent@1.2.0（2026-03-20 更新）
-- GitHub: github.com/ayao99315/coding-swarm-agent
-- 路径: skills/coding-swarm-agent/SKILL.md
+- 名称: ayao-workflow-agent
+- ClawHub: ayao-workflow-agent@1.7.0
+- GitHub: github.com/ayao99315/ayao-workflow-agent
+- 路径: skills/coding-swarm-agent/SKILL.md（本地目录名沿用旧名，git remote 已是 ayao-workflow-agent）
 
-### 架构 v2.3（2026-03-20 重大改进）
+### 架构演进记录（内部参考，非发布版本）
 - **dispatch 链路简化（方案B）**: 去掉 webhook → isolated agent 这一跳
   - on-complete.sh 直接发 Telegram 通知主 session
   - update-task-status.sh 内置同步解锁：task done → 自动把依赖它的 blocked 任务改为 pending
@@ -67,6 +67,7 @@
 - prompt 技术栈描述不准 → 铁律：引用实际代码文件
 - webhook 链路不可靠 → 方案B：直接通知，同步解锁（2026-03-19）
 - 任务跳过注册 → 改为一行快速注册命令（见 SKILL.md Hotfix Flow）
+- **codex reasoning effort**: `extra-high` 是无效值（会报 unknown variant 错误），正确值是 `xhigh`。SKILL.md 模型选择表已标注 xhigh，dispatch 时必须用 xhigh 不能用 extra-high
 
 ## 系统配置
 

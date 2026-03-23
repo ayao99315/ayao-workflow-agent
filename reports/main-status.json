@@ -1,21 +1,44 @@
 {
   "agent": "main",
-  "updated_at": "2026-03-22T11:38:34+08:00",
   "date": "2026-03-22",
-  "summary": "今日完成 coding-swarm-agent 项目记忆库机制：新增 projects/<slug>/ schema、自动 retro 记录，以及 cc-plan 的项目 context 注入。",
-  "tasks_done": [
-    "MEMORY-LIB: 新增 projects/README.md 与 example-project 示例，定义 context.md/retro.jsonl 结构",
-    "MEMORY-LIB: on-complete.sh 在成功任务完成后自动追加项目 retro，失败静默且不影响通知链路",
-    "MEMORY-LIB: dispatch.sh 为 cc-plan 的 claude prompt 自动注入 projects/<slug>/context.md，commit 20804f4"
+  "updated_at": "2026-03-22T14:45:00Z",
+  "focus": "ayao-workflow-agent 全天三版迭代：功能增强 → 安全加固 → 架构清理，并正式改名发布",
+  "done": [
+    "v1.5.0: prompt 认知模式 + Completeness Principle，on-complete 通知格式升级，review-dashboard.sh 新增，SKILL 文档同步",
+    "v1.5.0: writing/analysis 非编程 prompt 模板（9/9 validate 通过）",
+    "v1.5.0: T1-CONFIG 统一配置基础设施（swarm/config.json + swarm-config.sh）",
+    "v1.5.0: T3-IMAGE 生图工具 fail-safe + nano-banana/openai/stub 三后端",
+    "v1.5.0: 项目记忆库机制落地（projects/<slug>/context.md + retro.jsonl）",
+    "v1.6.0: FIX-A～FIX-D 全量安全加固（注入消除、竞态、原子写入、review dashboard exit 1）",
+    "v1.6.0: FIX-REVIEW Conditional Pass + FIX-DOCS 文档发版",
+    "v1.7.0: T1-CLEANUP 删废弃脚本（monitor.sh、spawn-agent.sh、agent-manager scale-up）",
+    "v1.7.0: T2-FRONTEND-ROUTING ui_quality=internal→codex / external→cc-frontend",
+    "v1.7.0: 正式改名 coding-swarm-agent → ayao-workflow-agent，ClawHub 发布 ayao-workflow-agent@1.7.0",
+    "GitHub repo 已 rename 为 ayao99315/ayao-workflow-agent，本地 remote 同步更新",
+    "ClawHub 旧版 coding-swarm-agent 已删除"
   ],
-  "tasks_pending": [],
-  "current_project": "coding-swarm-agent",
+  "doing": [],
+  "blocked": [],
+  "next": [
+    "PolyGo 新需求（待阿尧下达）",
+    "可按需继续迭代 ayao-workflow-agent v1.8.0"
+  ],
+  "need_from_ayao": [],
+  "artifacts": [
+    "github: ayao99315/ayao-workflow-agent",
+    "clawhub: ayao-workflow-agent@1.7.0",
+    "skills/coding-swarm-agent/ → skills/ayao-workflow-agent/（已更新 SKILL.md name 字段）",
+    "swarm/config.json",
+    "skills/coding-swarm-agent/scripts/generate-image.sh + backends/",
+    "skills/coding-swarm-agent/references/prompt-cc-writing.md",
+    "skills/coding-swarm-agent/references/prompt-cc-analysis.md",
+    "skills/coding-swarm-agent/projects/README.md"
+  ],
+  "summary": "今日三版连发（v1.5.0→v1.6.0→v1.7.0），全面完成功能增强、安全加固与架构清理；正式改名 ayao-workflow-agent 并发布 ClawHub",
   "tokens": {
-    "codex_input": 0,
+    "codex_input": 291301,
     "codex_output": 0,
-    "cc_input": 0,
-    "cc_output": 0
-  },
-  "blockers": null,
-  "notes": "已执行 bash -n scripts/on-complete.sh scripts/dispatch.sh，随后推送到 origin/main。duration_sec 采用任务 created_at/updated_at 最佳努力计算。"
+    "cc_input": 1937,
+    "cc_output": 45747
+  }
 }

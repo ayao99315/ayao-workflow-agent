@@ -1,0 +1,27 @@
+{
+  "agent": "main",
+  "updated_at": "2026-03-22T07:11:20Z",
+  "date": "2026-03-22",
+  "summary": "T1-CLEANUP 已完成：删除 monitor/spawn/agent-manager，on-complete 改为直接同步 pool 并在 swarm 完成时触发 cleanup；对应代码已在 9642201 且已推送",
+  "tasks_done": [
+    "v1.5.0: 配置系统、生图工具、项目记忆库、Contributor Mode 强化、文档更新（7任务）",
+    "FIX-A: 核心调度链路安全修复（注入消除、竞态、原子写入）",
+    "FIX-B: generate-image.sh + swarm-config.sh 安全修复",
+    "FIX-C: agent-pool 并发写统一加锁 + health-check 标 failed",
+    "FIX-D: swarm-new-batch 拒绝 running + review-dashboard 精确匹配 + exit 1",
+    "FIX-REVIEW: 全量 review Conditional Pass",
+    "FIX-DOCS: v1.6.0 文档更新发布",
+    "T2-FRONTEND-ROUTING: task-schema / SKILL / playbook 更新 ui_quality 路由；swarm/config.json 本地同步为 frontend_internal/frontend_external",
+    "T1-CLEANUP: 删除 scripts/monitor.sh + scripts/spawn-agent.sh + scripts/agent-manager.sh；on-complete 内联 pool liveness 同步与 cleanup 触发；文档引用同步清理"
+  ],
+  "tasks_pending": [],
+  "current_project": "coding-swarm-agent",
+  "tokens": {
+    "codex_input": 291301,
+    "codex_output": 0,
+    "cc_input": 1937,
+    "cc_output": 45747
+  },
+  "blockers": null,
+  "notes": "对应 cleanup diff 已在 origin/main=9642201；该提交 message 为 'feat: T2-FRONTEND-ROUTING auto-commit (agent forgot)'，与任务名不一致，但代码内容已包含本次 cleanup"
+}

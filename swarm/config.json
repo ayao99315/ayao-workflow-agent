@@ -16,13 +16,14 @@
   },
   "domain_routing": {
     "backend": "codex-1",
-    "frontend": "cc-frontend",
     "docs": "cc-plan",
     "writing": "cc-plan",
     "analysis": "cc-plan",
     "design": "cc-plan",
     "test": "codex-test",
-    "deploy": "codex-deploy"
+    "deploy": "codex-deploy",
+    "frontend_internal": "codex-1",
+    "frontend_external": "cc-frontend"
   },
   "capabilities": {
     "image_generation": true,

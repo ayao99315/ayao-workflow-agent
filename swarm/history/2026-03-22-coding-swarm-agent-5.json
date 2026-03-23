@@ -1,0 +1,166 @@
+{
+  "batch_id": "2026-03-22-coding-swarm-agent-4",
+  "project": "coding-swarm-agent",
+  "repo": "https://github.com/ayao99315/coding-swarm-agent",
+  "created_at": "2026-03-22T04:20:32Z",
+  "updated_at": "2026-03-22T06:37:08.958849+00:00",
+  "tasks": [
+    {
+      "id": "FIX-A",
+      "name": "修复核心调度链路：python3 代码注入 + shell 注入 + dispatch mark-running 竞态 + fire-and-forget + task-not-found 假成功",
+      "domain": "backend",
+      "agent": "codex-1",
+      "status": "done",
+      "review_level": "full",
+      "depends_on": [],
+      "created_at": "2026-03-22T04:20:45.767268Z",
+      "updated_at": "2026-03-22T04:33:04.694432+00:00",
+      "tmux": "codex-1",
+      "tokens": {
+        "input": 66324,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "commits": [
+        "479ef84"
+      ]
+    },
+    {
+      "id": "FIX-B",
+      "name": "修复工具脚本：generate-image.sh 路径穿越+假成功 + swarm-config.sh 失败清空+无锁写入",
+      "domain": "backend",
+      "agent": "codex-2",
+      "status": "done",
+      "review_level": "scan",
+      "depends_on": [],
+      "created_at": "2026-03-22T04:20:45.767268Z",
+      "updated_at": "2026-03-22T04:28:00.972624+00:00",
+      "tmux": "codex-2",
+      "commits": [
+        "514821a"
+      ],
+      "tokens": {
+        "input": 39303,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      }
+    },
+    {
+      "id": "FIX-C",
+      "name": "修复 agent-pool 并发写：spawn/update-agent-status/health-check/cleanup/agent-manager 统一加锁 + health-check 标 failed",
+      "domain": "backend",
+      "agent": "codex-3",
+      "status": "done",
+      "review_level": "full",
+      "depends_on": [],
+      "created_at": "2026-03-22T04:20:45.767268Z",
+      "updated_at": "2026-03-22T04:29:06.562707+00:00",
+      "tmux": "codex-3",
+      "tokens": {
+        "input": 52742,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      },
+      "commits": [
+        "514821a",
+        "8cdca0e"
+      ]
+    },
+    {
+      "id": "FIX-D",
+      "name": "修复独立脚本：swarm-new-batch 检查 running 任务 + review-dashboard 精确匹配 + exit 1 release gate",
+      "domain": "backend",
+      "agent": "codex-1",
+      "status": "done",
+      "review_level": "scan",
+      "depends_on": [
+        "FIX-A"
+      ],
+      "created_at": "2026-03-22T04:20:45.767268Z",
+      "updated_at": "2026-03-22T05:09:10.762635+00:00",
+      "tmux": "codex-1",
+      "commits": [
+        "24b409b"
+      ],
+      "tokens": {
+        "input": 32932,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0
+      }
+    },
+    {
+      "id": "FIX-REVIEW",
+      "name": "全量 review：审查 FIX-A/B/C/D 所有修复是否正确、无遗漏",
+      "domain": "backend",
+      "agent": "cc-review",
+      "status": "done",
+      "review_level": "skip",
+      "depends_on": [
+        "FIX-A",
+        "FIX-B",
+        "FIX-C",
+        "FIX-D"
+      ],
+      "created_at": "2026-03-22T04:20:45.767268Z",
+      "updated_at": "2026-03-22T05:16:57.673936+00:00",
+      "tmux": "cc-review",
+      "commits": [
+        "caf55b2"
+      ],
+      "tokens": {
+        "input": 24,
+        "output": 16993,
+        "cache_read": 1189278,
+        "cache_write": 64799
+      }
+    },
+    {
+      "id": "FIX-DOCS",
+      "name": "文档同步 + 发布 v1.6.0",
+      "domain": "docs",
+      "agent": "cc-plan",
+      "status": "done",
+      "review_level": "skip",
+      "depends_on": [
+        "FIX-REVIEW"
+      ],
+      "created_at": "2026-03-22T04:20:45.767268Z",
+      "updated_at": "2026-03-22T05:25:18.566900+00:00",
+      "tmux": "cc-plan",
+      "commits": [
+        "1f4b6fd"
+      ],
+      "tokens": {
+        "input": 183,
+        "output": 11961,
+        "cache_read": 1697367,
+        "cache_write": 43528
+      }
+    },
+    {
+      "id": "REVIEW-ARCH-V2",
+      "name": "架构层全面 review（重新跑，输出写到文件）",
+      "domain": "backend",
+      "agent": "cc-plan",
+      "status": "done",
+      "review_level": "skip",
+      "depends_on": [],
+      "created_at": "2026-03-22T06:32:35.305122Z",
+      "updated_at": "2026-03-22T06:37:08.958849+00:00",
+      "tmux": "cc-plan",
+      "commits": [
+        "1f4b6fd"
+      ],
+      "tokens": {
+        "input": 3811,
+        "output": 9590,
+        "cache_read": 1238132,
+        "cache_write": 82883
+      }
+    }
+  ]
+}
