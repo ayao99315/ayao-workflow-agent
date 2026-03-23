@@ -5,7 +5,7 @@
 # Writes a completion signal, updates task state synchronously, then wakes the
 # main OpenClaw session so it can handle review and next-task dispatch.
 
-set -Eeuo pipefail
+set -uo pipefail
 
 TASK_ID="${1:?Usage: on-complete.sh <task_id> <session> <exit_code> [log_file]}"
 SESSION="${2:?}"
@@ -35,7 +35,7 @@ log_on_complete_error() {
   } >> "$ERROR_LOG"
 }
 
-trap 'log_on_complete_error "line=${LINENO} command=${BASH_COMMAND} ec=$?"' ERR
+trap '_ec=$?; [[ $_ec -ne 2 ]] && log_on_complete_error "line=${LINENO} command=${BASH_COMMAND} ec=${_ec}"; unset _ec' ERR
 
 COMMIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "none")
 COMMIT_MSG=$(git log -1 --pretty=%s 2>/dev/null || echo "")
