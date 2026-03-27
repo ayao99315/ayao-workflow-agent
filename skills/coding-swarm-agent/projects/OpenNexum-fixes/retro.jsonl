@@ -6,3 +6,4 @@
 {"ts": "2026-03-27T06:12:45Z", "task_id": "FIX-008", "task_name": "on-complete.sh: build_retry_prompt 里 RELEVANT_LESSONS 加 TODO 注释说明", "commit": "02f05d4", "result": "done", "contributor_report": "", "duration_sec": 19}
 {"ts": "2026-03-27T06:13:09Z", "task_id": "FIX-007", "task_name": "nexum-revert.sh: git push 失败时打印警告而不是崩溃（set -e 豁免）", "commit": "ce84b11", "result": "done", "contributor_report": "", "duration_sec": 44}
 {"ts": "2026-03-27T06:13:51Z", "task_id": "FIX-006", "task_name": "dispatch.sh: 增加 eval_strategy.type 合法性校验", "commit": "ac89535", "result": "done", "contributor_report": "", "duration_sec": 87}
+{"ts": "2026-03-27T06:16:49Z", "task_id": "REVIEW-FIX-004", "task_name": "cc-review 复审 FIX-004：yaml-to-json.sh 抽取 + dispatch/on-complete/dispatch-evaluator 三处去重", "commit": "41912fd", "result": "done", "contributor_report": "", "duration_sec": 163}
