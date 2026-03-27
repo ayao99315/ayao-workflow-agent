@@ -383,8 +383,32 @@ HEARTBEAT_PID=$!
 echo "$HEARTBEAT_PID" > "$HEARTBEAT_PID_FILE"
 disown "$HEARTBEAT_PID"
 
+# Resolve model info from command args for dispatch card
+_DISPATCH_MODEL=""
+_DISPATCH_EFFORT=""
+for ((i = 0; i < ${#COMMAND_ARGS[@]}; i++)); do
+  case "${COMMAND_ARGS[i]}" in
+    --model)
+      (( i + 1 < ${#COMMAND_ARGS[@]} )) && _DISPATCH_MODEL="${COMMAND_ARGS[i+1]}" ;;
+    --model=*)
+      _DISPATCH_MODEL="${COMMAND_ARGS[i]#--model=}" ;;
+    -c)
+      if (( i + 1 < ${#COMMAND_ARGS[@]} )) && [[ "${COMMAND_ARGS[i+1]}" == model_reasoning_effort* ]]; then
+        _DISPATCH_EFFORT="${COMMAND_ARGS[i+1]#model_reasoning_effort=}"
+      fi ;;
+  esac
+done
+[[ -z "$_DISPATCH_MODEL" ]] && _DISPATCH_MODEL="${COMMAND_ARGS[0]}"  # fallback: binary name
+
+_DISPATCH_MODEL_LINE="$_DISPATCH_MODEL"
+[[ -n "$_DISPATCH_EFFORT" ]] && _DISPATCH_MODEL_LINE="$_DISPATCH_MODEL (reasoning: $_DISPATCH_EFFORT)"
+
 if [[ "$VERBOSE_DISPATCH" == "false" ]]; then
-  echo "🚀 $TASK_ID → $SESSION | $(date +%H:%M)"
+  echo "🚀 $TASK_ID → $SESSION | $_DISPATCH_MODEL_LINE | $(date +%H:%M)"
 else
-  echo "✅ Dispatched $TASK_ID to $SESSION (script: $SCRIPT_FILE, log: $LOG_FILE)"
+  echo "🚀 Dispatched $TASK_ID → $SESSION"
+  echo "┣ 📋 Session:  tmux: $SESSION"
+  echo "┣ ⏰ Started:  $(date +%H:%M:%S)"
+  echo "┣ 🤖 Model:   $_DISPATCH_MODEL_LINE"
+  echo "┗ 📝 Log:     $LOG_FILE"
 fi

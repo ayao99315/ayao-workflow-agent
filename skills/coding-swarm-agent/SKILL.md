@@ -495,11 +495,13 @@ Model is fixed as `gpt-5.4`. Reasoning effort is configurable via `-c model_reas
 |---|---|---|
 | `medium` | `-c model_reasoning_effort=medium` | Simple/mechanical tasks (scripts, boilerplate) |
 | `high` | `-c model_reasoning_effort=high` | Standard coding tasks (default) |
-| `extra-high` | `-c model_reasoning_effort=extra-high` | Complex logic, financial code, retry after failure |
+| `xhigh` | `-c model_reasoning_effort=xhigh` | Complex logic, financial code, retry after failure |
+
+> ⚠️ `extra-high` is an **invalid value** (causes "unknown variant" error). The correct flag is `xhigh`.
 
 **Retry escalation rule:**
 - Attempt 1: `high` (default)
-- Attempt 2+: automatically escalate to `extra-high`
+- Attempt 2+: automatically escalate to `xhigh`
 - Never downgrade on retry
 
 ### Send commands to agents (with auto-completion notification)
@@ -530,9 +532,9 @@ $SKILL_DIR/scripts/dispatch.sh cc-frontend T010 --prompt-file "$PROMPT_FILE" \
 $SKILL_DIR/scripts/dispatch.sh codex-1 T001 --prompt-file "$PROMPT_FILE" \
   codex exec -c model_reasoning_effort=high --dangerously-bypass-approvals-and-sandbox
 
-# Codex — retry / complex task (extra-high effort)
+# Codex — retry / complex task (xhigh effort)
 $SKILL_DIR/scripts/dispatch.sh codex-1 T001 --prompt-file "$PROMPT_FILE" \
-  codex exec -c model_reasoning_effort=extra-high --dangerously-bypass-approvals-and-sandbox
+  codex exec -c model_reasoning_effort=xhigh --dangerously-bypass-approvals-and-sandbox
 
 # Codex — simple/boilerplate task (medium effort, faster)
 $SKILL_DIR/scripts/dispatch.sh codex-1 T001 --prompt-file "$PROMPT_FILE" \
@@ -617,4 +619,7 @@ The following WARN-level issues were identified during the v1.6.0 security revie
 - `scripts/health-check.sh` — Inspect all running agent sessions; detect stuck/dead agents, mark their tasks as `failed` via update-task-status.sh, notify, and run prompt-reference validation. Uses flock + atomic write for agent-pool.json
 - `scripts/validate-prompts.sh` — Scan prompt templates under `references/` and verify every referenced `scripts/*.sh` path exists
 - `scripts/cleanup-agents.sh` — Kill all dynamic agent sessions after swarm completes; preserve fixed sessions. Uses flock + atomic write for agent-pool.json
-- Full design doc: `~/.openclaw/workspace/docs/ayao-workflow-agent-playbook.md`
+- `references/prompt-codex-deploy.md` — Codex deploy prompt template
+- `references/prompt-codex-test.md` — Codex test/verification prompt template
+- `references/prompt-requirements.md` — Requirements gathering prompt template
+- Full design doc: `references/agent-swarm-playbook.md`

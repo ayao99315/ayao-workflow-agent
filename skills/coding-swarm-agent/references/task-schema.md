@@ -41,6 +41,7 @@ Location: `~/.openclaw/workspace/swarm/active-tasks.json`
       "issue": "GitHub issue number or null",
       "depends_on": ["T00X"],
       "created_at": "ISO8601",
+      "started_at": "ISO8601 | null",
       "updated_at": "ISO8601",
       "attempts": 0,
       "max_attempts": 3,

@@ -132,9 +132,11 @@ Codex 代码审查                               → cc-review（claude-sonnet-4
 |--------|------|---------|
 | `medium` | `-c model_reasoning_effort=medium` | 简单/机械性任务（脚本、样板） |
 | `high` | `-c model_reasoning_effort=high` | 标准编码任务（默认） |
-| `extra-high` | `-c model_reasoning_effort=extra-high` | 复杂逻辑、金融代码、重试 |
+| `xhigh` | `-c model_reasoning_effort=xhigh` | 复杂逻辑、金融代码、重试 |
 
-**重试升级规则**：第 1 次用 `high`，第 2 次及之后自动升级到 `extra-high`，不降级。
+> ⚠️ `extra-high` 是**无效值**（会报 unknown variant 错误），正确值是 `xhigh`。
+
+**重试升级规则**：第 1 次用 `high`，第 2 次及之后自动升级到 `xhigh`，不降级。
 
 ### 交叉 Review 规则
 
@@ -608,7 +610,7 @@ $SKILL_DIR/scripts/swarm-new-batch.sh --project "<project-name>" --repo "<github
   },
   "reasoning_effort": {
     "default": "high",
-    "retry": "extra-high",
+    "retry": "xhigh",
     "simple": "medium"
   },
   "domain_routing": {
